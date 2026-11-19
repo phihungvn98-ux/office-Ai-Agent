@@ -1,0 +1,140 @@
+schema: paperclip/v1
+schemaVersion: 6
+
+# Cấu hình riêng cho Paperclip. Đường dẫn máy (cwd) KHÔNG nằm ở đây —
+# script `office bootstrap` sẽ gán cwd = <repo>/workspaces/... sau khi import.
+
+agents:
+  manager:
+    metadata:
+      officeSlug: manager
+      sprite: boss
+    adapter:
+      type: claude_local
+      runner: legacy
+      config:
+        model: claude-sonnet-5-5
+        maxTurnsPerRun: 60
+        timeoutSec: 1800
+    runtime:
+      heartbeat:
+        enabled: false
+        wakeOnAssignment: true
+        wakeOnDemand: true
+        maxConcurrentRuns: 1
+    permissions:
+      canCreateAgents: false
+    inputs:
+      env:
+        NINEROUTER_URL:
+          kind: plain
+          requirement: optional
+          default: "http://localhost:20128/v1"
+        NINEROUTER_API_KEY:
+          kind: secret
+          requirement: optional
+        NINEROUTER_DEFAULT_MODEL:
+          kind: plain
+          requirement: optional
+          default: "gpt-6"
+  pm:
+    metadata:
+      officeSlug: pm
+      sprite: pm
+    adapter:
+      type: claude_local
+      runner: legacy
+      config:
+        model: claude-sonnet-5-5
+        maxTurnsPerRun: 80
+        timeoutSec: 1800
+    runtime:
+      heartbeat:
+        enabled: false
+        wakeOnAssignment: true
+        wakeOnDemand: true
+        maxConcurrentRuns: 1
+    inputs:
+      env:
+        NINEROUTER_URL:
+          kind: plain
+          requirement: optional
+          default: "http://localhost:20128/v1"
+        NINEROUTER_API_KEY:
+          kind: secret
+          requirement: optional
+        NINEROUTER_DEFAULT_MODEL:
+          kind: plain
+          requirement: optional
+          default: "gpt-6"
+  job-hunter:
+    metadata:
+      officeSlug: job-hunter
+      sprite: hunter
+    adapter:
+      type: claude_local
+      runner: legacy
+      config:
+        model: claude-haiku-5-5
+        maxTurnsPerRun: 60
+        timeoutSec: 1800
+    runtime:
+      heartbeat:
+        enabled: false
+        wakeOnAssignment: true
+        wakeOnDemand: true
+        maxConcurrentRuns: 1
+    inputs:
+      env:
+        NINEROUTER_URL:
+          kind: plain
+          requirement: optional
+          default: "http://localhost:20128/v1"
+        NINEROUTER_API_KEY:
+          kind: secret
+          requirement: optional
+        NINEROUTER_DEFAULT_MODEL:
+          kind: plain
+          requirement: optional
+          default: "gpt-6"
+
+projects:
+  office-ops:
+    color: "#7c5cff"
+    status: in_progress
+
+# Lịch theo giờ Việt Nam. Gói Pro/Max giới hạn theo khung 5 giờ nên lịch được rải ra.
+# Lưu ý: KHÔNG viết comment ở cuối dòng giá trị (Paperclip đọc cả comment vào giá trị).
+routines:
+  daily-standup:
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: skip_missed
+    triggers:
+      - kind: schedule
+        label: "8:05 sáng T2–T7"
+        cronExpression: "5 8 * * 1-6"
+        timezone: Asia/Ho_Chi_Minh
+  weekly-review:
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: skip_missed
+    triggers:
+      - kind: schedule
+        label: "Thứ Hai 9:10"
+        cronExpression: "10 9 * * 1"
+        timezone: Asia/Ho_Chi_Minh
+  job-scan:
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: skip_missed
+    triggers:
+      - kind: schedule
+        label: "7:20, 13:20, 19:20"
+        cronExpression: "20 7,13,19 * * *"
+        timezone: Asia/Ho_Chi_Minh
+  client-projects-review:
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: skip_missed
+    triggers:
+      - kind: schedule
+        label: "7:40 và 16:40 T2–T7"
+        cronExpression: "40 7,16 * * 1-6"
+        timezone: Asia/Ho_Chi_Minh

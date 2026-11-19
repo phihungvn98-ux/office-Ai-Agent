@@ -1,0 +1,21 @@
+{
+  "name": "ai-office-mcp",
+  "version": "0.1.0",
+  "description": "MCP server cho AI Office: ask_model (9Router), jobs_fetch, office_status",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "fast-xml-parser": "^5.12.1",
+    "zod": "^4.6.7"
+  },
+  "private": true,
+  "type": "module",
+  "bin": {
+    "office-mcp": "server.mjs"
+  }
+}

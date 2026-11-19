@@ -1,0 +1,11 @@
+node_modules/
+.env
+*.log
+office-mcp/mcp.generated.json
+workspaces/_office/.pixel-office-reports.json
+workspaces/_office/.status-fallback.jsonl
+workspaces/_office/jobs/seen.json
+workspaces/_office/jobs/inbox/*.json
+workspaces/_office/jobs/inbox/processed/
+data/
+.DS_Store

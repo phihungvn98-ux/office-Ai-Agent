@@ -1,0 +1,25 @@
+{
+  "_note": "Copy thành sources.json rồi chỉnh. Chỉ dùng nguồn hợp lệ: API công khai, RSS được phép, inbox (n8n đọc email job alert). Không scrape.",
+  "sources": [
+    {
+      "type": "freelancer",
+      "name": "Freelancer.com",
+      "enabled": true,
+      "query": "wordpress seo",
+      "limit": 30,
+      "min_budget": 100
+    },
+    {
+      "type": "inbox",
+      "name": "Email alert (Upwork/Fiverr qua n8n)",
+      "enabled": true
+    },
+    {
+      "type": "rss",
+      "name": "Ví dụ RSS",
+      "platform": "rss-example",
+      "enabled": false,
+      "url": "https://example.com/jobs.rss"
+    }
+  ]
+}

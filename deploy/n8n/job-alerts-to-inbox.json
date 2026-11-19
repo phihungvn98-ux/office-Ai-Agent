@@ -1,0 +1,88 @@
+{
+  "name": "AI Office — Email job alert → Jobs inbox",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "read",
+        "options": {}
+      },
+      "id": "1b1f6a52-0001-4c1e-9c51-000000000001",
+      "name": "Email job alert (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lọc email job alert (Upwork, Fiverr, Freelancer, PeoplePerHour...) → danh sách job cho AI Office.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  const from = String(j.from?.value?.[0]?.address || j.from || '').toLowerCase();\n  const platform = ['upwork', 'fiverr', 'freelancer', 'peopleperhour', 'guru', 'toptal'].find((p) => from.includes(p));\n  if (!platform) continue;\n  const text = String(j.textPlain || j.text || j.textHtml || j.html || '');\n  const title = String(j.subject || '').replace(/^(new job|job alert|new project|new jobs?)[:\\-\\s]*/i, '').trim();\n  const urls = [...new Set((text.match(/https?:\\/\\/[^\\s\"'<>)\\]]+/g) || [])\n    .filter((u) => /\\/(jobs?|projects?|gigs?)\\//i.test(u))\n    .map((u) => u.split('?')[0]))];\n  if (urls.length === 0) out.push({ id: `${platform}:${j.messageId || title}`, platform, title, url: null, description: text.slice(0, 3000) });\n  for (const url of urls.slice(0, 15)) out.push({ id: url, platform, title, url, description: text.slice(0, 3000) });\n}\nreturn out.length ? [{ json: { jobs: out } }] : [];"
+      },
+      "id": "1b1f6a52-0002-4c1e-9c51-000000000002",
+      "name": "Tách job từ email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PIXEL_OFFICE_INBOX_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.PIXEL_OFFICE_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "1b1f6a52-0003-4c1e-9c51-000000000003",
+      "name": "Gửi vào AI Office",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Email job alert (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Tách job từ email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tách job từ email": {
+      "main": [
+        [
+          {
+            "node": "Gửi vào AI Office",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

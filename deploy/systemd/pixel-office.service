@@ -1,0 +1,15 @@
+# /etc/systemd/system/pixel-office.service — thay USER và đường dẫn repo
+[Unit]
+Description=Pixel Office dashboard (AI Office)
+After=paperclip.service
+Wants=paperclip.service
+
+[Service]
+User=USER
+WorkingDirectory=/home/USER/ai-office
+ExecStart=/usr/bin/node pixel-office/server.mjs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

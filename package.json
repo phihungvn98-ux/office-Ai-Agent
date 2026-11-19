@@ -1,0 +1,31 @@
+{
+  "name": "ai-office",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Văn phòng AI agent: Paperclip (lõi công ty) + Claude Code (nhân viên) + 9Router (model ngoài) + Pixel Office (dashboard pixel)",
+  "type": "module",
+  "workspaces": [
+    "office-mcp",
+    "pixel-office"
+  ],
+  "scripts": {
+    "paperclip:setup": "paperclipai onboard --yes",
+    "paperclip": "paperclipai run",
+    "bootstrap": "node scripts/office.mjs bootstrap",
+    "sync": "node scripts/office.mjs sync",
+    "new-project": "node scripts/office.mjs new-project",
+    "status": "node scripts/office.mjs status",
+    "doctor": "node scripts/office.mjs doctor",
+    "office": "node pixel-office/server.mjs",
+    "office:demo": "node pixel-office/server.mjs --demo",
+    "backup": "bash scripts/backup.sh",
+    "test": "npm test -w office-mcp && npm test -w pixel-office"
+  },
+  "dependencies": {
+    "paperclipai": "2026.1117.0"
+  },
+  "engines": {
+    "node": ">=24.11"
+  },
+  "license": "MIT"
+}

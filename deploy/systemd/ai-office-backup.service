@@ -1,0 +1,8 @@
+[Unit]
+Description=AI Office backup (Paperclip DB + workspaces)
+
+[Service]
+Type=oneshot
+User=USER
+WorkingDirectory=/home/USER/ai-office
+ExecStart=/bin/bash scripts/backup.sh

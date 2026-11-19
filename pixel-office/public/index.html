@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Office</title>
+  <meta name="description" content="Văn phòng AI agent — ai đang làm gì, tiến độ tới đâu." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%232b2838'/%3E%3Crect x='5' y='2' width='6' height='6' fill='%23f2c7a5'/%3E%3Crect x='5' y='1' width='6' height='2' fill='%2322202a'/%3E%3Crect x='4' y='8' width='8' height='6' fill='%237c5cff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <h1 id="company">AI Office</h1>
+      <span id="live" class="live" title="Đang kết nối…"></span>
+    </div>
+    <div class="top-right">
+      <span id="meeting" class="meeting-pill" hidden></span>
+      <a id="open-paperclip" class="btn ghost" target="_blank" rel="noopener" hidden>Mở Paperclip ↗</a>
+      <span id="clock" class="clock"></span>
+    </div>
+  </header>
+
+  <div id="err" class="err-banner" role="status" hidden></div>
+
+  <main class="layout">
+    <section class="stage" aria-label="Văn phòng">
+      <div class="office-frame">
+        <canvas id="office" aria-label="Bản đồ văn phòng pixel: bàn làm việc, phòng họp, góc nghỉ"></canvas>
+        <div id="overlay" class="overlay"></div>
+        <span class="room-label work">Khu làm việc</span>
+        <span class="room-label meet">Phòng họp</span>
+        <span class="room-label lounge">Góc nghỉ</span>
+      </div>
+      <div id="kpis" class="kpis"></div>
+      <div class="legend" aria-label="Chú thích">
+        <span class="chip work">Đang làm</span><span class="chip meet">Đang họp</span><span class="chip wait">Chờ</span><span class="chip idle">Rảnh</span><span class="chip off">Tạm dừng</span><span class="chip err">Lỗi</span>
+      </div>
+    </section>
+
+    <aside class="side">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="agents" aria-selected="true">Nhân viên</button>
+        <button role="tab" data-tab="projects">Dự án</button>
+        <button role="tab" data-tab="activity">Hoạt động</button>
+        <button role="tab" data-tab="settings">Cài đặt</button>
+      </nav>
+      <div id="tab-agents" class="panel" role="tabpanel"></div>
+      <div id="tab-projects" class="panel" role="tabpanel" hidden></div>
+      <div id="tab-activity" class="panel" role="tabpanel" hidden></div>
+      <div id="tab-settings" class="panel" role="tabpanel" hidden></div>
+    </aside>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -172,6 +172,9 @@ async function bootstrap(opts) {
     const cfg = { ...(a.adapterConfig || {}) };
     const extra = (cfg.extraArgs || []).filter((x, i, arr) => x !== "--mcp-config" && arr[i - 1] !== "--mcp-config");
     cfg.cwd = officeCwd;
+    // Paperclip mặc định chạy Claude qua engine ACP, và ACP bỏ qua extraArgs → MCP "office" không được nạp.
+    // Engine "cli" gọi thẳng `claude` và truyền extraArgs (--mcp-config).
+    cfg.engine = "cli";
     cfg.extraArgs = [...extra, "--mcp-config", mcp];
     await api(`/agents/${a.id}`, { method: "PATCH", body: JSON.stringify({ adapterConfig: cfg }) });
     ok(`${a.name} (${slugOf(a)}): cwd=workspaces/_office, MCP office`);

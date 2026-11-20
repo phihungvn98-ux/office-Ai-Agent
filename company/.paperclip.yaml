@@ -11,8 +11,8 @@ agents:
       sprite: boss
     adapter:
       type: claude_local
-      runner: legacy
       config:
+        engine: cli
         model: claude-sonnet-5-5
         maxTurnsPerRun: 60
         timeoutSec: 1800
@@ -43,8 +43,8 @@ agents:
       sprite: pm
     adapter:
       type: claude_local
-      runner: legacy
       config:
+        engine: cli
         model: claude-sonnet-5-5
         maxTurnsPerRun: 80
         timeoutSec: 1800
@@ -73,8 +73,8 @@ agents:
       sprite: hunter
     adapter:
       type: claude_local
-      runner: legacy
       config:
+        engine: cli
         model: claude-haiku-5-5
         maxTurnsPerRun: 60
         timeoutSec: 1800

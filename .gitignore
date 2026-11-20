@@ -9,3 +9,6 @@ workspaces/_office/jobs/inbox/*.json
 workspaces/_office/jobs/inbox/processed/
 data/
 .DS_Store
+
+# Paperclip/Claude tự sinh trong workspace (đường dẫn riêng của máy)
+**/.claude/settings.local.json

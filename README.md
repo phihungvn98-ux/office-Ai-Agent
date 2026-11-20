@@ -55,7 +55,7 @@ cd ai-office && npm install
 cp .env.example .env
 ```
 
-Mở `.env` và điền `NINEROUTER_URL`, `NINEROUTER_API_KEY`, `NINEROUTER_DEFAULT_MODEL` (tên model GPT-6 đúng như 9Router liệt kê).
+Mở `.env` và điền `NINEROUTER_URL`, `NINEROUTER_API_KEY`, `NINEROUTER_DEFAULT_MODEL` (tên model GPT-6 đúng như 9Router liệt kê). `NINEROUTER_API_STYLE` chọn kiểu API: `auto` (mặc định: thử `/responses` trước, lỗi thì quay về `/chat/completions`), `responses` hoặc `chat`.
 
 ```bash
 claude
@@ -165,7 +165,7 @@ Script cài Node 24, Claude Code, Caddy (HTTPS), dịch vụ systemd, backup h�
 Ví dụ thêm phòng **Marketing/SEO**:
 1. Tạo `company/agents/seo/AGENTS.md` (vai trò, quy trình, luật), `reportsTo: manager`, khai báo các skill cần dùng.
 2. Tạo skill trong `company/skills/<ten>/SKILL.md` (ví dụ `seo-audit`, `content-calendar`).
-3. Thêm cấu hình vào `company/.paperclip.yaml` mục `agents.seo`. Cách nhanh nhất là chép khối `pm` rồi sửa: **giữ `type: claude_local` + `runner: legacy`**, đổi `metadata.officeSlug: seo`, `sprite: designer`, chọn model. Lưu ý: không viết comment ở cuối dòng giá trị.
+3. Thêm cấu hình vào `company/.paperclip.yaml` mục `agents.seo`. Cách nhanh nhất là chép khối `pm` rồi sửa: **giữ `type: claude_local` + `config.engine: cli`** (engine mặc định ACP không nạp MCP `office`), đổi `metadata.officeSlug: seo`, `sprite: designer`, chọn model. Lưu ý: không viết comment ở cuối dòng giá trị.
    Lịch định kỳ cho phòng ban mới thì tạo trong Paperclip › Routines.
 4. Import phần mới vào văn phòng đang chạy (không ghi đè những gì đã có), rồi gán workspace/MCP:
    ```bash

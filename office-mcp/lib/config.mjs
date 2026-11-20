@@ -25,6 +25,10 @@ export const config = {
   ninerouterUrl: (env.NINEROUTER_URL || "http://localhost:20128/v1").replace(/\/+$/, ""),
   ninerouterKey: env.NINEROUTER_API_KEY || "",
   defaultModel: env.NINEROUTER_DEFAULT_MODEL || "gpt-6",
+  // auto = thử /responses trước, lỗi thì quay về /chat/completions · responses · chat
+  ninerouterApiStyle: ["auto", "responses", "chat"].includes((env.NINEROUTER_API_STYLE || "").trim().toLowerCase())
+    ? env.NINEROUTER_API_STYLE.trim().toLowerCase()
+    : "auto",
   llmTimeoutMs: Number(env.NINEROUTER_TIMEOUT_MS || 120000),
   pixelOfficeUrl: (env.PIXEL_OFFICE_URL || "http://localhost:3200").replace(/\/+$/, ""),
   pixelOfficeToken: env.PIXEL_OFFICE_TOKEN || "",

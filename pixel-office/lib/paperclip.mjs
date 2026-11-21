@@ -98,6 +98,84 @@ export class PaperclipClient {
     return this.api(`/routines/${id}`, { method: "PATCH", body: JSON.stringify({ status: action === "pause" ? "paused" : "active" }) });
   }
 
+  // ---- chat & thread (Agent Chat của Paperclip = 1 issue/cặp nhân viên–bạn; phòng họp = task họp) ----
+  async getChat(agentId) {
+    const c = await this.resolveCompany();
+    const id = encodeURIComponent(agentId);
+    // Chưa có chat: Paperclip trả 200 + null (bản cũ có thể trả 404) → tạo mới.
+    let chat = null;
+    try {
+      chat = await this.api(`/companies/${c}/chats/${id}`);
+    } catch (err) {
+      if (!/ 404 /.test(err.message)) throw err;
+    }
+    if (!chat?.id) chat = await this.api(`/companies/${c}/chats/${id}`, { method: "POST", body: "{}" });
+    if (!chat?.id) throw new Error("Paperclip không tạo được cuộc chat");
+    return chat;
+  }
+
+  async thread(issueId, limit = 60) {
+    const [comments, attachments] = await Promise.all([
+      this.api(`/issues/${issueId}/comments?order=desc&limit=${limit}`),
+      this.api(`/issues/${issueId}/attachments`).catch(() => []),
+    ]);
+    const byComment = new Map();
+    for (const a of Array.isArray(attachments) ? attachments : []) {
+      if (!a.issueCommentId) continue;
+      if (!byComment.has(a.issueCommentId)) byComment.set(a.issueCommentId, []);
+      byComment.get(a.issueCommentId).push(a);
+    }
+    return (Array.isArray(comments) ? comments : [])
+      .filter((m) => !m.deletedAt)
+      .map((m) => {
+        const files = (byComment.get(m.id) || []).map((a) => ({
+          id: a.id,
+          name: a.originalFilename || "file",
+          type: a.contentType || "",
+          url: `/api/attachments/${a.id}/content`,
+        }));
+        const agentId = m.authorAgentId || m.derivedAuthorAgentId || null;
+        return {
+          id: m.id,
+          author: agentId ? "agent" : m.authorType === "user" ? "user" : "system",
+          agentId,
+          body: m.body || "",
+          createdAt: m.createdAt,
+          images: files.filter((f) => f.type.startsWith("image/")),
+          files: files.filter((f) => !f.type.startsWith("image/")),
+        };
+      })
+      .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  }
+
+  async postMessage(issueId, { body, images = [] }) {
+    const c = await this.resolveCompany();
+    const attachmentIds = [];
+    for (const img of images) {
+      const fd = new FormData();
+      fd.append("file", new Blob([img.buffer], { type: img.type }), img.name);
+      const headers = { accept: "application/json" };
+      if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
+      const res = await fetch(`${this.baseUrl}/api/companies/${c}/issues/${issueId}/attachments`, {
+        method: "POST",
+        headers,
+        body: fd,
+        signal: AbortSignal.timeout(60000),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const e = new Error(`Tải ảnh "${img.name}" lên Paperclip lỗi ${res.status}: ${data.error || ""}`);
+        e.status = res.status === 413 || res.status === 422 ? 400 : 502;
+        throw e;
+      }
+      attachmentIds.push(data.id);
+    }
+    return this.api(`/issues/${issueId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ body, clientRequestId: crypto.randomUUID(), ...(attachmentIds.length ? { attachmentIds } : {}) }),
+    });
+  }
+
   // ---- live events: chỉ dùng như tín hiệu "có thay đổi" để refresh sớm; polling vẫn là nguồn chính ----
   onLiveEvent(fn) {
     this.listeners.push(fn);

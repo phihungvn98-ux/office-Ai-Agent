@@ -13,6 +13,8 @@ import { createHash } from "node:crypto";
 const here = path.dirname(fileURLToPath(import.meta.url));
 let upstream, upPort, child, base, home;
 const seen = [];
+// trạng thái chat giả lập của "Paperclip"
+const chatStore = { created: 0, comments: [], uploads: [] };
 const upSockets = new Set();
 
 const freePort = () =>
@@ -30,6 +32,42 @@ before(async () => {
     if (req.url === "/" || req.url.startsWith("/AIO")) {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", etag: '"abc"' });
       return res.end("<!doctype html><html><body><div id=root>Paperclip UI</div></body></html>");
+    }
+    // ---- Agent Chat giả lập ----
+    const json = (code, data) => {
+      res.writeHead(code, { "content-type": "application/json" });
+      res.end(JSON.stringify(data));
+    };
+    if (req.url === "/api/companies") return json(200, [{ id: "c1", name: "AI Office" }]);
+    if (req.url === "/api/companies/c1/chats/agent-1") {
+      // giống Paperclip thật: chưa có chat → 200 + null
+      if (req.method === "GET" && !chatStore.created) return json(200, null);
+      chatStore.created = 1;
+      return json(200, { id: "chat-1", identifier: "AIO-9", title: "Chat with Kỹ Sư" });
+    }
+    if (req.url === "/api/companies/c1/issues/chat-1/attachments" && req.method === "POST") {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      const raw = Buffer.concat(chunks);
+      chatStore.uploads.push({ ct: req.headers["content-type"], raw });
+      return json(201, { id: `att-${chatStore.uploads.length}`, contentType: "image/png" });
+    }
+    if (req.url === "/api/issues/chat-1/attachments") {
+      return json(200, chatStore.uploads.map((u, i) => ({ id: `att-${i + 1}`, issueCommentId: chatStore.comments[0]?.id || null, contentType: "image/png", originalFilename: "a.png" })));
+    }
+    if (req.url.startsWith("/api/issues/chat-1/comments")) {
+      if (req.method === "POST") {
+        let b = "";
+        for await (const c of req) b += c;
+        const body = JSON.parse(b);
+        const c = { id: `cm-${chatStore.comments.length + 1}`, authorType: "user", authorUserId: "local-board", body: body.body, createdAt: new Date().toISOString(), _sent: body };
+        chatStore.comments.push(c);
+        return json(201, c);
+      }
+      return json(200, [
+        { id: "cm-agent", authorType: "agent", authorAgentId: "agent-1", body: "Chào anh", createdAt: "2026-01-01T00:00:00.000Z" },
+        ...chatStore.comments,
+      ].reverse());
     }
     if (req.url === "/api/health") {
       res.writeHead(200, { "content-type": "application/json" });
@@ -158,4 +196,46 @@ test("Paperclip down → Vietnamese error page (HTML) or JSON error", async () =
   assert.match((await api.json()).error, /Paperclip không phản hồi/);
   // văn phòng vẫn mở được
   assert.equal((await fetch(base + "/office/")).status, 200);
+});
+
+test("chat: tạo chat khi chưa có, gửi ảnh → upload multipart rồi comment kèm attachmentIds", async () => {
+  // upstream đã bị tắt ở test trước → dựng lại bằng cách mở lại cổng cũ
+  await new Promise((r) => upstream.listen(upPort, "127.0.0.1", r));
+  const g = await (await fetch(base + "/office/api/chat/agent-1")).json();
+  assert.equal(g.issueId, "chat-1");
+  assert.equal(chatStore.created, 1);
+  assert.deepEqual(g.messages.map((m) => [m.author, m.agentId, m.body]), [["agent", "agent-1", "Chào anh"]]);
+
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+  const r = await fetch(base + "/office/api/chat/agent-1", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ body: "  xem ảnh  ", images: [{ name: "man hinh.png", type: "image/png", data: "data:image/png;base64," + png.toString("base64") }] }),
+  });
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.equal(chatStore.uploads.length, 1);
+  assert.match(chatStore.uploads[0].ct, /^multipart\/form-data; boundary=/);
+  assert.ok(chatStore.uploads[0].raw.includes(png));
+  assert.match(chatStore.uploads[0].raw.toString("latin1"), /name="file"; filename="man hinh.png"/);
+  const sent = chatStore.comments[0]._sent;
+  assert.equal(sent.body, "xem ảnh");
+  assert.deepEqual(sent.attachmentIds, ["att-1"]);
+  assert.match(sent.clientRequestId, /^[0-9a-f-]{36}$/);
+  const mine = d.messages.find((m) => m.author === "user");
+  assert.equal(mine.images.length, 1);
+  assert.equal(mine.images[0].url, "/api/attachments/att-1/content");
+});
+
+test("chat: kiểm tra dữ liệu gửi lên", async () => {
+  const post = (payload) => fetch(base + "/office/api/chat/agent-1", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const one = { name: "a.png", type: "image/png", data: "iVBORw0KGgo=" };
+  assert.equal((await post({ body: "" })).status, 400);
+  assert.equal((await post({ body: "x", images: Array(6).fill(one) })).status, 400);
+  assert.equal((await post({ body: "x", images: [{ ...one, type: "image/svg+xml" }] })).status, 400);
+  assert.equal((await post({ body: "x".repeat(20001) })).status, 400);
+  assert.equal((await fetch(base + "/office/api/chat/..%2fetc")).status, 404);
+  // chỉ ảnh, không chữ → nội dung mặc định
+  assert.equal((await post({ images: [one] })).status, 200);
+  assert.equal(chatStore.comments.at(-1)._sent.body, "(ảnh)");
 });

@@ -20,7 +20,7 @@ const HOP_BY_HOP = new Set([
 // Nút nổi đưa từ Paperclip sang văn phòng pixel. Chỉ là thẻ <a>, không có script.
 export const OFFICE_LINK_HTML =
   '<a id="ai-office-link" href="/office/" title="Mở văn phòng pixel" ' +
-  'style="position:fixed;right:16px;bottom:16px;z-index:2147483000;display:inline-flex;align-items:center;gap:6px;' +
+  'style="position:fixed;right:60px;top:12px;z-index:2147483000;display:inline-flex;align-items:center;gap:6px;' +
   "padding:8px 12px;border-radius:999px;background:#6d4fe0;color:#fff;font:600 13px/1 system-ui,sans-serif;" +
   'text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.25)">🏢 Văn phòng</a>';
 

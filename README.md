@@ -103,9 +103,10 @@ Muốn xem văn phòng pixel trước khi có dữ liệu thật thì chạy `np
 | Bạn muốn… | Làm thế nào |
 |---|---|
 | Xem ai đang làm gì, tiến độ | **Pixel Office**. Nhân vật ngồi gõ phím ở bàn khi làm việc, vào phòng họp khi họp, ra sofa khi rảnh. Bấm vào nhân vật để xem chi tiết |
-| Giao việc | Paperclip → tạo task, chọn người (PM / Chánh văn phòng / Săn job), chọn dự án. Agent tự thức dậy khi được giao |
+| **Nói chuyện với nhân viên (kèm ảnh)** | Văn phòng pixel › tab **Trò chuyện** (hoặc bấm vào nhân vật trên bản đồ). Dán ảnh bằng Ctrl+V, kéo-thả hoặc 📎. Nhân viên tự thức dậy khi có tin nhắn; câu trả lời hiện trong khung chat và bong bóng trên đầu nhân vật. Cùng nội dung với mục Chat của Paperclip |
+| Giao việc | Paperclip → tạo task, chọn người (PM / Chánh văn phòng / Săn job / Kỹ sư), chọn dự án. Agent tự thức dậy khi được giao |
 | Duyệt proposal / email gửi khách | Paperclip → hộp duyệt (Pixel Office › Hoạt động hiển thị số việc chờ duyệt). Bạn tự gửi đi |
-| Họp ngay | Pixel Office › Cài đặt › "Họp sáng" › **Chạy ngay** |
+| Họp ngay | Pixel Office › Cài đặt › "Họp sáng" › **Chạy ngay**. Trong lúc họp, tab Trò chuyện có kênh **🗣 Phòng họp**: xem từng người phát biểu và chen ý kiến |
 | Tạm dừng / đổi model / bật tự thức dậy | Pixel Office › Cài đặt |
 | Xem biên bản họp | `workspaces/_office/meetings/` |
 | Xem job & proposal nháp | `workspaces/_office/jobs/reports/` và `jobs/proposals/` |
@@ -116,6 +117,18 @@ Muốn xem văn phòng pixel trước khi có dữ liệu thật thì chạy `np
 - 08:05 (T2–T7): Họp sáng; 09:10 thứ Hai: Review tuần
 
 ---
+
+## 2b. Kỹ sư văn phòng — sửa/mở rộng văn phòng bằng cách nhắn tin
+
+Thay vì tự mở Claude CLI, bạn nhắn cho **Kỹ Sư Văn Phòng** trong tab Trò chuyện, ví dụ: *"Thêm nguồn job PeoplePerHour"* hoặc gửi ảnh chụp chỗ giao diện bị lỗi.
+
+1. Kỹ sư hỏi lại nếu chưa rõ, rồi làm trên **nhánh git riêng** (`eng/…`, thư mục `../ai-office-dev/`). Văn phòng đang chạy không bị ảnh hưởng.
+2. Chạy test, rồi báo lại tóm tắt + file thay đổi + kết quả test, kèm nút **"Gộp & tải lại"** (chỉ người thật bấm được) trong Paperclip.
+3. Bạn bấm đồng ý (hoặc nhắn "ok gộp eng/…") → Kỹ sư chạy `scripts/dev/deploy.sh`: gộp vào main, chạy test lại (hỏng thì **tự hoàn tác**), cập nhật nhân viên nếu `company/` đổi, tải lại văn phòng, push GitHub nếu được.
+
+Kỹ sư **không** khởi động lại Paperclip, không sửa `.env`, không cài phần mềm hệ thống — những việc đó Kỹ sư sẽ hướng dẫn bạn tự làm. Nhân viên khác gặp vướng công cụ sẽ tự tạo task cho Kỹ sư; Kỹ sư mang các góp ý này ra họp.
+
+**Họp có hội thoại:** Chánh văn phòng mở họp → mỗi người (PM, Săn job, Kỹ sư) phát biểu ≤ 8 dòng trên task họp → Chánh VP tổng hợp cả ý kiến bạn chen vào thành biên bản. Mỗi buổi tốn khoảng 5 lượt chạy Claude (thay vì 1) — muốn tiết kiệm thì tắt lịch "Họp sáng" và chỉ giữ "Review tuần".
 
 ## 3. Tối ưu context cho từng dự án
 
@@ -183,9 +196,10 @@ Sprite có sẵn cho Pixel Office: `boss`, `pm`, `hunter`, `marketer`, `designer
 ai-office/
 ├── company/                 # Company package (import vào Paperclip)
 │   ├── COMPANY.md
-│   ├── agents/{manager,pm,job-hunter}/AGENTS.md
-│   ├── skills/{office-context,meeting-minutes,job-scoring,proposal-writing,ask-other-models}/SKILL.md
+│   ├── agents/{manager,pm,job-hunter,engineer}/AGENTS.md
+│   ├── skills/{office-context,meeting-minutes,job-scoring,proposal-writing,ask-other-models,office-engineering}/SKILL.md
 │   ├── projects/office-ops/  # dự án nội bộ + 4 task định kỳ (họp, review tuần, quét job, rà soát dự án)
+│   ├── projects/office-dev/  # "Phát triển văn phòng" của Kỹ sư
 │   └── .paperclip.yaml      # model, lịch (cron, giờ VN), metadata sprite
 ├── office-mcp/              # MCP server "office" (+ test)
 ├── pixel-office/            # dashboard (server Node không phụ thuộc thư viện ngoài, canvas pixel art tự vẽ) (+ test)
@@ -193,7 +207,9 @@ ai-office/
 │   ├── _office/             # họp, săn job, hồ sơ năng lực
 │   ├── _template/           # mẫu cho dự án mới
 │   └── <du-an>/             # mỗi dự án khách hàng một thư mục
-├── scripts/office.mjs       # bootstrap · new-project · status · doctor
+├── scripts/office.mjs       # bootstrap · sync · new-project · status · doctor
+├── scripts/start.mjs        # npm start (Paperclip + cổng chung, tự bật lại)
+├── scripts/dev/             # worktree.sh, deploy.sh — công cụ của Kỹ sư văn phòng
 ├── scripts/backup.sh
 └── deploy/                  # VPS: setup-ubuntu.sh, systemd, Caddyfile, n8n
 ```

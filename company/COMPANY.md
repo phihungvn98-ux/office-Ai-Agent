@@ -26,3 +26,4 @@ Văn phòng ảo gồm các "nhân viên" AI làm việc cho **chủ văn phòng
 3. **Context theo dự án**: mỗi dự án có thư mục riêng trong `workspaces/<dự-án>/` với `CLAUDE.md` (bối cảnh cố định), `STATUS.md` (tình trạng hiện tại), `DECISIONS.md` (quyết định đã chốt). Chỉ đọc thư mục của dự án đang làm. Xem skill `office-context`.
 4. **Tiết kiệm quota Claude**: việc khối lượng lớn, lặp lại (chấm điểm job, tóm tắt dài, dịch, viết nháp nhiều phương án) giao cho model ngoài qua tool `ask_model` (9Router → GPT-6...). Xem skill `ask-other-models`.
 5. **Minh bạch tiến độ**: cập nhật trạng thái task trên Paperclip và gọi `office_status` để dashboard Pixel Office hiển thị bạn đang làm gì.
+6. **Gặp vướng công cụ / hệ thống → báo Kỹ sư văn phòng** (`engineer`): tạo task giao cho `engineer` trong dự án "Phát triển văn phòng", ghi rõ đang làm gì, công cụ nào lỗi/thiếu, ví dụ cụ thể, mức ảnh hưởng (chặn việc / phiền / cải tiến). Không tự sửa code của văn phòng.

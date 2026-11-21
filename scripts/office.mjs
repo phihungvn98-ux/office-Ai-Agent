@@ -171,13 +171,15 @@ async function bootstrap(opts) {
     }
     const cfg = { ...(a.adapterConfig || {}) };
     const extra = (cfg.extraArgs || []).filter((x, i, arr) => x !== "--mcp-config" && arr[i - 1] !== "--mcp-config");
-    cfg.cwd = officeCwd;
+    // Kỹ sư văn phòng làm việc trên chính repo (sửa code qua worktree riêng); các nhân viên khác ở workspaces/_office.
+    const isEngineer = slugOf(a) === "engineer";
+    cfg.cwd = isEngineer ? ROOT : officeCwd;
     // Paperclip mặc định chạy Claude qua engine ACP, và ACP bỏ qua extraArgs → MCP "office" không được nạp.
     // Engine "cli" gọi thẳng `claude` và truyền extraArgs (--mcp-config).
     cfg.engine = "cli";
     cfg.extraArgs = [...extra, "--mcp-config", mcp];
     await api(`/agents/${a.id}`, { method: "PATCH", body: JSON.stringify({ adapterConfig: cfg }) });
-    ok(`${a.name} (${slugOf(a)}): cwd=workspaces/_office, MCP office`);
+    ok(`${a.name} (${slugOf(a)}): cwd=${isEngineer ? "<gốc repo>" : "workspaces/_office"}, MCP office`);
   }
 
   // 3. dự án nội bộ + dự án khách hàng
@@ -186,6 +188,26 @@ async function bootstrap(opts) {
   if (officeProject) {
     const r = await ensureProjectWorkspace(officeProject, officeCwd, "_office");
     ok(`Dự án "Vận hành văn phòng" → workspaces/_office ${r.created ? "(mới gán)" : ""}`);
+  }
+  // Dự án "Phát triển văn phòng" của Kỹ sư: workspace = gốc repo. Văn phòng cũ (trước khi có Kỹ sư) chưa có → tạo.
+  const engineer = (await api(`/companies/${company.id}/agents`)).find((a) => slugOf(a) === "engineer" && a.status !== "terminated");
+  if (engineer) {
+    let devProject = projects.find((p) => p.name === "Phát triển văn phòng");
+    if (!devProject) {
+      devProject = await api(`/companies/${company.id}/projects`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Phát triển văn phòng",
+          description: "Sửa lỗi và mở rộng chính hệ thống AI Office. Mọi thay đổi làm trên nhánh riêng và chờ chủ văn phòng duyệt.",
+          status: "in_progress",
+          leadAgentId: engineer.id,
+          color: "#3a86ff",
+        }),
+      });
+      ok('Tạo dự án "Phát triển văn phòng"');
+    }
+    const r = await ensureProjectWorkspace(devProject, ROOT, "ai-office");
+    ok(`Dự án "Phát triển văn phòng" → gốc repo ${r.created ? "(mới gán)" : ""}`);
   }
   for (const dir of clientDirs()) await linkClientProject(company, dir, projects);
 
@@ -290,16 +312,18 @@ async function newProject(opts) {
   console.log(`\n→ Điền thông tin khách hàng vào ${c.b(`workspaces/${slug}/CLAUDE.md`)} để PM làm việc chính xác hơn.\n`);
 }
 
-function packageAgentSlugs() {
+function packageAgents() {
   const dir = path.join(COMPANY_DIR, "agents");
   return fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, "AGENTS.md")))
     .map((d) => {
-      const fm = fs.readFileSync(path.join(dir, d.name, "AGENTS.md"), "utf8").match(/^---[\s\S]*?^slug:\s*([\w-]+)/m);
-      return fm ? fm[1] : d.name;
+      const fm = (fs.readFileSync(path.join(dir, d.name, "AGENTS.md"), "utf8").match(/^---\n([\s\S]*?)\n---/) || [])[1] || "";
+      const get = (k) => (fm.match(new RegExp(`^${k}:\\s*([\\w-]+)\\s*$`, "m")) || [])[1] || null;
+      return { slug: get("slug") || d.name, reportsTo: get("reportsTo") };
     });
 }
+const packageAgentSlugs = () => packageAgents().map((a) => a.slug);
 
 async function sync(opts) {
   if (!(await paperclipUp())) return bad(`Paperclip không chạy (${PAPERCLIP})`);
@@ -313,6 +337,16 @@ async function sync(opts) {
     console.log(`  Tuyển nhân viên mới: ${fresh.join(", ")}`);
     runPaperclipCli(["company", "import", COMPANY_DIR, "--target", "existing", "--company-id", company.id, "--include", "agents,skills", "--agents", fresh.join(","), "--collision", "skip", "--yes", "--json"]);
     ok("Đã import nhân viên mới (kèm skill)");
+    // Import riêng nhân viên mới thì Paperclip không nối được cấp trên đã có sẵn → tự nối theo reportsTo trong AGENTS.md.
+    const live = (await api(`/companies/${company.id}/agents`)).filter((a) => a.status !== "terminated");
+    for (const pkg of packageAgents().filter((p) => fresh.includes(p.slug) && p.reportsTo && p.reportsTo !== "null")) {
+      const me = live.find((a) => slugOf(a) === pkg.slug);
+      const boss = live.find((a) => slugOf(a) === pkg.reportsTo);
+      if (me && boss && !me.reportsTo) {
+        await api(`/agents/${me.id}`, { method: "PATCH", body: JSON.stringify({ reportsTo: boss.id }) });
+        ok(`${me.name} báo cáo cho ${boss.name}`);
+      }
+    }
   }
   console.log(c.d("  Lịch định kỳ mới: tạo trong Paperclip › Routines (sync không tự tạo để tránh trùng lịch)."));
   return bootstrap(opts);

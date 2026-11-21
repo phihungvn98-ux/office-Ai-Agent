@@ -1,8 +1,8 @@
 # n8n (tuỳ chọn) — tự động hoá: đọc email job alert → đẩy vào văn phòng, webhook, lịch đăng bài...
 #   docker compose -f deploy/docker-compose.n8n.yml up -d     → http://localhost:5678
 # n8n gửi job tới Pixel Office (Bearer PIXEL_OFFICE_TOKEN):
-#   - Máy cá nhân (Docker Desktop): http://host.docker.internal:3200/api/jobs/inbox (mặc định bên dưới)
-#   - VPS Linux: đặt PIXEL_OFFICE_INBOX_URL=https://office.domain-cua-ban.com/api/jobs/inbox (đi qua Caddy)
+#   - Máy cá nhân (Docker Desktop): http://host.docker.internal:3200/office/api/jobs/inbox (mặc định bên dưới)
+#   - VPS Linux: đặt PIXEL_OFFICE_INBOX_URL=https://ai.domain-cua-ban.com/office/api/jobs/inbox (đi qua Caddy)
 services:
   n8n:
     image: docker.n8n.io/n8nio/n8n:latest
@@ -13,7 +13,7 @@ services:
       - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
       - TZ=Asia/Ho_Chi_Minh
       - N8N_SECURE_COOKIE=false
-      - PIXEL_OFFICE_INBOX_URL=${PIXEL_OFFICE_INBOX_URL:-http://host.docker.internal:3200/api/jobs/inbox}
+      - PIXEL_OFFICE_INBOX_URL=${PIXEL_OFFICE_INBOX_URL:-http://host.docker.internal:3200/office/api/jobs/inbox}
       - PIXEL_OFFICE_TOKEN=${PIXEL_OFFICE_TOKEN:-}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     extra_hosts:

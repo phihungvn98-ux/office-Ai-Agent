@@ -77,7 +77,7 @@ before(async () => {
         <description>&lt;p&gt;Audit 50 pages&lt;/p&gt;</description><pubDate>Wed, 19 Nov 2026 08:00:00 GMT</pubDate></item>
         </channel></rss>`);
     }
-    if (req.url === "/api/agent-status") {
+    if (req.url === "/office/api/agent-status") {
       received.status.push(JSON.parse(body));
       return json(200, { ok: true });
     }

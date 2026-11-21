@@ -33,11 +33,11 @@ if ! grep -q '^PIXEL_OFFICE_TOKEN=.\+' .env; then
   sed -i "s/^PIXEL_OFFICE_TOKEN=.*/PIXEL_OFFICE_TOKEN=$(openssl rand -hex 24)/" .env
 fi
 
-echo "== 5/5 Dịch vụ systemd (paperclip, pixel-office, backup hằng đêm)"
-for f in paperclip.service pixel-office.service ai-office-backup.service ai-office-backup.timer; do
+echo "== 5/5 Dịch vụ systemd (ai-office = Paperclip + văn phòng, backup hằng đêm)"
+for f in ai-office.service ai-office-backup.service ai-office-backup.timer; do
   sed -e "s#/home/USER/ai-office#${REPO}#g" -e "s/^User=USER/User=${ME}/" "deploy/systemd/$f" | sudo tee "/etc/systemd/system/$f" >/dev/null
 done
-sudo sed -i "s#ExecStart=/usr/bin/npx#ExecStart=$(command -v npx)#; s#ExecStart=/usr/bin/node#ExecStart=$(command -v node)#" /etc/systemd/system/paperclip.service /etc/systemd/system/pixel-office.service
+sudo sed -i "s#ExecStart=/usr/bin/node#ExecStart=$(command -v node)#" /etc/systemd/system/ai-office.service
 sudo systemctl daemon-reload
 
 echo "== Tường lửa: chỉ mở SSH + HTTP/HTTPS"
@@ -50,26 +50,26 @@ cat <<EOF
  1) Đăng nhập Claude (gói Pro/Max) cho user ${ME}:
       claude        → gõ /login, mở link trên trình duyệt, dán mã. Thoát bằng /exit.
 
- 2) Khởi tạo Paperclip ở chế độ có đăng nhập, đứng sau Caddy:
+ 2) Khởi tạo Paperclip ở chế độ có đăng nhập, đứng sau cổng chung + Caddy:
       npx paperclipai onboard        → chọn "authenticated" → "public",
-                                       public URL: https://paperclip.<domain-cua-ban>
-      sudo systemctl enable --now paperclip
+                                       public URL: https://ai.<domain-cua-ban>
+      sudo systemctl enable --now ai-office
 
- 3) Cấu hình domain + HTTPS: trỏ DNS paperclip.<domain> và office.<domain> về IP VPS, rồi
+ 3) Cấu hình domain + HTTPS: trỏ DNS ai.<domain> về IP VPS, rồi
       sudo cp deploy/Caddyfile.example /etc/caddy/Caddyfile && sudo nano /etc/caddy/Caddyfile
-      caddy hash-password             (dán kết quả vào Caddyfile)
       sudo systemctl reload caddy
-    Mở https://paperclip.<domain>, tạo tài khoản admin.
+    Mở https://ai.<domain>, tạo tài khoản admin. Văn phòng pixel ở https://ai.<domain>/office/
 
  4) Tạo API key cho Pixel Office và điền .env:
       npx paperclipai connect          (đăng nhập CLI bằng tài khoản admin)
       npx paperclipai token board create --name pixel-office --never-expires
-      nano .env    → PAPERCLIP_API_KEY=..., PAPERCLIP_PUBLIC_URL=https://paperclip.<domain>,
+      nano .env    → PAPERCLIP_API_KEY=..., PAPERCLIP_PUBLIC_URL=https://ai.<domain>,
+                     PIXEL_OFFICE_URL=https://ai.<domain>, PIXEL_OFFICE_USER/PASS (mật khẩu cho /office),
                      NINEROUTER_URL / NINEROUTER_API_KEY / NINEROUTER_DEFAULT_MODEL
 
  5) Dựng văn phòng và bật dashboard:
       npm run bootstrap
-      sudo systemctl enable --now pixel-office ai-office-backup.timer
+      sudo systemctl restart ai-office && sudo systemctl enable --now ai-office-backup.timer
       npm run doctor
 
 EOF

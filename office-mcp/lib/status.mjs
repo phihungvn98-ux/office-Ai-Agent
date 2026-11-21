@@ -16,7 +16,7 @@ export async function reportStatus({ state, message, progress, project }) {
   try {
     const headers = { "content-type": "application/json" };
     if (config.pixelOfficeToken) headers.authorization = `Bearer ${config.pixelOfficeToken}`;
-    const res = await fetch(`${config.pixelOfficeUrl}/api/agent-status`, {
+    const res = await fetch(`${config.pixelOfficeUrl}/office/api/agent-status`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),

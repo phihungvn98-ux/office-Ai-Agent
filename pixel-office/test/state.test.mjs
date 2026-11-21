@@ -110,30 +110,36 @@ test("server serves page, state and accepts agent-status with token", async () =
     const base = `http://127.0.0.1:${port}`;
     for (let i = 0; i < 50; i++) {
       try {
-        await fetch(base + "/api/state");
+        await fetch(base + "/office/api/state");
         break;
       } catch {
         await new Promise((r) => setTimeout(r, 100));
       }
     }
-    assert.match(await (await fetch(base + "/")).text(), /Pixel Office/);
-    const st = await (await fetch(base + "/api/state")).json();
+    assert.match(await (await fetch(base + "/office/")).text(), /Pixel Office/);
+    // demo không có Paperclip → "/" và "/office" chuyển về /office/
+    const r1 = await fetch(base + "/", { redirect: "manual" });
+    assert.equal(r1.status, 302);
+    assert.equal(r1.headers.get("location"), "/office/");
+    const r2 = await fetch(base + "/office", { redirect: "manual" });
+    assert.equal(r2.headers.get("location"), "/office/");
+    const st = await (await fetch(base + "/office/api/state")).json();
     assert.equal(st.ok, true);
-    const denied = await fetch(base + "/api/agent-status", { method: "POST", body: "{}" });
+    const denied = await fetch(base + "/office/api/agent-status", { method: "POST", body: "{}" });
     assert.equal(denied.status, 401);
-    const ok = await fetch(base + "/api/agent-status", {
+    const ok = await fetch(base + "/office/api/agent-status", {
       method: "POST",
       headers: { authorization: "Bearer secret", "content-type": "application/json" },
       body: JSON.stringify({ agentId: "test-agent", state: "working", message: "hi" }),
     });
     assert.equal(ok.status, 200);
-    const inbox = await fetch(base + "/api/jobs/inbox", {
+    const inbox = await fetch(base + "/office/api/jobs/inbox", {
       method: "POST",
       headers: { authorization: "Bearer secret", "content-type": "application/json" },
       body: JSON.stringify({ jobs: [{ title: "Test job", url: "https://example.com/j/1", platform: "upwork" }, { nope: 1 }] }),
     });
     assert.deepEqual(await inbox.json(), { ok: true, saved: 1 });
-    const traversal = await fetch(base + "/..%2f..%2fpackage.json");
+    const traversal = await fetch(base + "/office/..%2f..%2fpackage.json");
     assert.notEqual(traversal.status, 200);
     const files = await fs.readdir(path.join(home, "workspaces", "_office", "jobs", "inbox"));
     assert.equal(files.length, 1);

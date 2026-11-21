@@ -267,7 +267,7 @@ function renderActivity() {
   const ap = state.approvals.length
     ? `<section class="card approvals"><h3>Chờ bạn duyệt (${state.approvals.length})</h3><ul>${state.approvals
         .map((x) => `<li>${esc(x.title)} <small>${ago(x.createdAt)}</small></li>`)
-        .join("")}</ul>${state.paperclipUrl ? `<a class="btn" href="${esc(state.paperclipUrl)}" target="_blank" rel="noopener">Mở Paperclip để duyệt →</a>` : ""}</section>`
+        .join("")}</ul>${state.paperclipUrl ? `<a class="btn" href="${esc(state.paperclipUrl)}">Mở Paperclip để duyệt →</a>` : ""}</section>`
     : "";
   $("#tab-activity").innerHTML =
     ap +
@@ -348,10 +348,10 @@ $("#tab-settings").addEventListener("click", async (e) => {
   try {
     b.disabled = true;
     if (b.dataset.act) {
-      await post(`/api/agents/${row.dataset.agent}/${b.dataset.act}`);
+      await post(`api/agents/${row.dataset.agent}/${b.dataset.act}`);
       toast({ pause: "Đã tạm dừng", resume: "Đã cho làm tiếp", wake: "Đã đánh thức — agent sẽ chạy 1 lượt", retry: "Đang xác minh lại…" }[b.dataset.act]);
     } else if (b.dataset.ract) {
-      await post(`/api/routines/${row.dataset.routine}/${b.dataset.ract}`);
+      await post(`api/routines/${row.dataset.routine}/${b.dataset.ract}`);
       toast({ run: "Đã chạy ngay", pause: "Đã tắt lịch", activate: "Đã bật lịch" }[b.dataset.ract]);
     }
   } catch (err) {
@@ -367,11 +367,11 @@ $("#tab-settings").addEventListener("change", async (e) => {
   const id = s.closest(".set-row").dataset.agent;
   try {
     if (s.dataset.set === "model") {
-      await post(`/api/agents/${id}/model`, { model: s.value });
+      await post(`api/agents/${id}/model`, { model: s.value });
       toast(`Đã đổi model: ${s.value}`);
     } else {
       const v = Number(s.value);
-      await post(`/api/agents/${id}/heartbeat`, { enabled: v > 0, intervalSec: v || 3600 });
+      await post(`api/agents/${id}/heartbeat`, { enabled: v > 0, intervalSec: v || 3600 });
       toast(v ? "Đã bật tự thức dậy" : "Đã tắt tự thức dậy");
     }
     s.blur();
@@ -426,7 +426,7 @@ function render() {
 
 // ---------------- dữ liệu realtime ----------------
 function connect() {
-  const es = new EventSource("/api/stream");
+  const es = new EventSource("api/stream");
   es.addEventListener("state", (e) => {
     state = JSON.parse(e.data);
     $("#live").className = state.ok ? "live on" : "live off";

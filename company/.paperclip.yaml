@@ -98,9 +98,42 @@ agents:
           requirement: optional
           default: "gpt-6"
 
+  engineer:
+    metadata:
+      officeSlug: engineer
+      sprite: dev
+    adapter:
+      type: claude_local
+      config:
+        engine: cli
+        model: claude-sonnet-5-5
+        maxTurnsPerRun: 150
+        timeoutSec: 3600
+    runtime:
+      heartbeat:
+        enabled: false
+        wakeOnAssignment: true
+        wakeOnDemand: true
+        maxConcurrentRuns: 1
+    inputs:
+      env:
+        NINEROUTER_URL:
+          kind: plain
+          requirement: optional
+          default: "http://localhost:20128/v1"
+        NINEROUTER_API_KEY:
+          kind: secret
+          requirement: optional
+        NINEROUTER_DEFAULT_MODEL:
+          kind: plain
+          requirement: optional
+          default: "gpt-6"
 projects:
   office-ops:
     color: "#7c5cff"
+    status: in_progress
+  office-dev:
+    color: "#3a86ff"
     status: in_progress
 
 # Lịch theo giờ Việt Nam. Gói Pro/Max giới hạn theo khung 5 giờ nên lịch được rải ra.

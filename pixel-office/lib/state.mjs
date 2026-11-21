@@ -141,7 +141,7 @@ export function buildState(snap, { reports = {}, paperclipPublicUrl = "", demo =
         message,
         progress: running && repFresh?.progress != null ? repFresh.progress : null,
         project: project ? project.name : repFresh?.project || null,
-        issue: issue ? { id: issue.id, identifier: issue.identifier, title: issue.title, status: issue.status } : null,
+        issue: issue ? { id: issue.id, identifier: issue.identifier, title: issue.title, status: issue.status, parentId: issue.parentId || null } : null,
         openTasks: mineAll.filter((i) => i.status !== "done").length,
         doneTasks: mineAll.filter((i) => i.status === "done").length,
         lastHeartbeatAt: a.lastHeartbeatAt || null,
@@ -157,15 +157,25 @@ export function buildState(snap, { reports = {}, paperclipPublicUrl = "", demo =
     .sort((x, y) => (x.reportsTo ? 1 : 0) - (y.reportsTo ? 1 : 0) || x.name.localeCompare(y.name));
 
   // ---- họp ----
+  // Họp có hội thoại: task họp (cha) + các task con "Phát biểu họp …". Còn task con mở → buổi họp vẫn đang diễn ra.
+  const SPEECH_RE = /^phát biểu họp/i;
   const host = agents.find((a) => a.activity === "meeting");
-  const meeting = host
-    ? {
-        active: true,
-        title: host.issue?.title || host.message || "Họp",
-        host: host.id,
-        participants: agents.filter((a) => !["paused", "error"].includes(a.activity)).map((a) => a.id),
-      }
-    : { active: false };
+  const openSpeech = issues.find((i) => SPEECH_RE.test(i.title || "") && ["todo", "in_progress", "in_review", "blocked"].includes(i.status) && i.parentId);
+  const meetingIssueId = (() => {
+    if (host?.issue) return SPEECH_RE.test(host.issue.title) && host.issue.parentId ? host.issue.parentId : host.issue.id;
+    return openSpeech?.parentId || null;
+  })();
+  const meetingIssue = meetingIssueId ? issues.find((i) => i.id === meetingIssueId) : null;
+  const meeting =
+    host || openSpeech
+      ? {
+          active: true,
+          title: meetingIssue?.title || host?.issue?.title || host?.message || "Họp",
+          host: host?.id || null,
+          issueId: meetingIssueId,
+          participants: agents.filter((a) => !["paused", "error"].includes(a.activity)).map((a) => a.id),
+        }
+      : { active: false };
 
   // ---- lịch định kỳ ----
   const routines = snap.routines.map((r) => ({

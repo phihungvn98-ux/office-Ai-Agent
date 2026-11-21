@@ -28,6 +28,26 @@ test("running agent on a meeting task puts everyone in the meeting", () => {
   assert.equal(s.agents.find((a) => a.id === "zz").activity, "paused");
 });
 
+test("conversational meeting: open 'Phát biểu họp' subtasks keep the meeting active on the parent issue", () => {
+  const s = buildState({
+    agents: [agent({ id: "boss", role: "ceo" }), agent({ id: "pm", status: "running" }), agent({ id: "eng" })],
+    projects: [],
+    issues: [
+      { id: "m1", title: "Họp sáng (daily standup)", status: "blocked", assigneeAgentId: "boss" },
+      { id: "s1", title: "Phát biểu họp standup 21/11", status: "in_progress", assigneeAgentId: "pm", parentId: "m1" },
+      { id: "s2", title: "Phát biểu họp standup 21/11", status: "todo", assigneeAgentId: "eng", parentId: "m1" },
+    ],
+    routines: [],
+    approvals: [],
+    activity: [],
+  });
+  assert.equal(s.meeting.active, true);
+  assert.equal(s.meeting.issueId, "m1");
+  assert.equal(s.meeting.title, "Họp sáng (daily standup)");
+  assert.equal(s.agents.find((a) => a.id === "pm").activity, "meeting");
+  assert.deepEqual(s.meeting.participants.sort(), ["boss", "eng", "pm"]);
+});
+
 test("fresh agent report overrides activity and message while running", () => {
   const now = Date.now();
   const s = buildState(
@@ -95,7 +115,7 @@ test("project progress uses task ratio when STATUS.md is absent", () => {
 test("demo source produces a consistent snapshot", async () => {
   const snap = await new DemoSource().snapshot();
   const s = buildState(snap, { reports: snap.reports });
-  assert.equal(s.agents.length, 5);
+  assert.equal(s.agents.length, 6);
   assert.ok(s.projects.length >= 3);
 });
 
@@ -143,6 +163,13 @@ test("server serves page, state and accepts agent-status with token", async () =
     assert.notEqual(traversal.status, 200);
     const files = await fs.readdir(path.join(home, "workspaces", "_office", "jobs", "inbox"));
     assert.equal(files.length, 1);
+    // reload: sai token bị chặn; đúng token → trả lời rồi thoát mã 75 (start.mjs bật lại)
+    const noAuth = await fetch(base + "/office/api/admin/reload", { method: "POST" });
+    assert.equal(noAuth.status, 401);
+    const exited = new Promise((r) => child.once("exit", (code) => r(code)));
+    const rl = await fetch(base + "/office/api/admin/reload", { method: "POST", headers: { authorization: "Bearer secret" } });
+    assert.deepEqual(await rl.json(), { ok: true, reloading: true });
+    assert.equal(await exited, 75);
   } finally {
     child.kill();
     await fs.rm(home, { recursive: true, force: true });

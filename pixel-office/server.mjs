@@ -145,14 +145,61 @@ function checkToken(req) {
   return h.startsWith("Bearer ") && safeEq(h.slice(7), cfg.token);
 }
 
-async function readBody(req) {
-  let body = "";
+async function readBody(req, max = 64 * 1024) {
+  const chunks = [];
+  let size = 0;
   for await (const c of req) {
-    body += c;
-    if (body.length > 64 * 1024) throw new Error("Body quá lớn");
+    size += c.length;
+    if (size > max) {
+      const e = new Error("Dữ liệu gửi lên quá lớn");
+      e.status = 413;
+      throw e;
+    }
+    chunks.push(c);
   }
-  return body ? JSON.parse(body) : {};
+  const body = Buffer.concat(chunks).toString("utf8");
+  try {
+    return body ? JSON.parse(body) : {};
+  } catch {
+    const e = new Error("JSON không hợp lệ");
+    e.status = 400;
+    throw e;
+  }
 }
+
+// ---- tin nhắn chat / phòng họp: kiểm tra trước khi chuyển lên Paperclip ----
+const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+const MAX_IMAGES = 5;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_CHAT_BODY = MAX_IMAGES * Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 256 * 1024;
+
+function badRequest(message) {
+  const e = new Error(message);
+  e.status = 400;
+  return e;
+}
+
+function parseMessage(b) {
+  const text = typeof b.body === "string" ? b.body.trim() : "";
+  const raw = Array.isArray(b.images) ? b.images : [];
+  if (raw.length > MAX_IMAGES) throw badRequest(`Tối đa ${MAX_IMAGES} ảnh mỗi tin`);
+  const images = raw.map((img, i) => {
+    const type = String(img?.type || "").toLowerCase();
+    if (!IMAGE_TYPES.has(type)) throw badRequest(`Ảnh ${i + 1}: chỉ nhận PNG, JPEG, WebP, GIF`);
+    const data = String(img?.data || "").replace(/^data:[^;]+;base64,/, "");
+    const buffer = Buffer.from(data, "base64");
+    if (!buffer.length) throw badRequest(`Ảnh ${i + 1} trống`);
+    if (buffer.length > MAX_IMAGE_BYTES) throw badRequest(`Ảnh ${i + 1} lớn hơn 10 MB`);
+    const ext = type.split("/")[1].replace("jpeg", "jpg");
+    const name = String(img?.name || `anh-${i + 1}.${ext}`).replace(/[^\p{L}\p{N}._ -]/gu, "_").slice(0, 120) || `anh-${i + 1}.${ext}`;
+    return { name, type, buffer };
+  });
+  if (!text && !images.length) throw badRequest("Tin nhắn trống");
+  if (text.length > 20000) throw badRequest("Tin nhắn quá dài (tối đa 20.000 ký tự)");
+  return { body: text || (images.length > 1 ? `(${images.length} ảnh)` : "(ảnh)"), images };
+}
+
+const ID_RE = /^[\w-]{1,80}$/;
 
 function send(res, code, data) {
   res.writeHead(code, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -193,6 +240,21 @@ const server = http.createServer(async (req, res) => {
       saveReports();
       refreshSoon();
       return send(res, 200, { ok: true });
+    }
+
+    // Kỹ sư (scripts/dev/deploy.sh) yêu cầu tải lại cổng sau khi gộp code mới.
+    // Trả lời trước, rồi thoát với mã 75 → scripts/start.mjs bật lại ngay với code mới.
+    if (req.method === "POST" && p === "/api/admin/reload") {
+      const local = ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress);
+      if (cfg.token ? !checkToken(req) : !local) return send(res, 401, { error: "Sai token" });
+      send(res, 200, { ok: true, reloading: true });
+      console.log("Nhận lệnh tải lại từ Kỹ sư — khởi động lại cổng…");
+      setTimeout(() => {
+        source.close?.();
+        server.close();
+        process.exit(75);
+      }, 200);
+      return;
     }
 
     // n8n / Zapier / script đẩy job vào inbox (cùng token với agent-status).
@@ -257,6 +319,30 @@ const server = http.createServer(async (req, res) => {
       refreshSoon();
       return send(res, 200, { ok: true, result: r });
     }
+    // ---- trò chuyện với nhân viên (Agent Chat của Paperclip) ----
+    if ((m = p.match(/^\/api\/chat\/([\w-]+)$/))) {
+      if (!ID_RE.test(m[1])) return send(res, 400, { error: "Sai mã nhân viên" });
+      if (!source.getChat) return send(res, 501, { error: "Nguồn dữ liệu không hỗ trợ chat" });
+      const chat = await source.getChat(m[1]);
+      if (req.method === "POST") {
+        const msg = parseMessage(await readBody(req, MAX_CHAT_BODY));
+        await source.postMessage(chat.id, msg);
+        refreshSoon();
+      } else if (req.method !== "GET") return send(res, 405, { error: "Không hỗ trợ" });
+      return send(res, 200, { issueId: chat.id, identifier: chat.identifier || null, messages: await source.thread(chat.id) });
+    }
+    // ---- hội thoại trên một task (phòng họp) ----
+    if ((m = p.match(/^\/api\/thread\/([\w-]+)$/))) {
+      if (!ID_RE.test(m[1])) return send(res, 400, { error: "Sai mã task" });
+      if (!source.thread) return send(res, 501, { error: "Nguồn dữ liệu không hỗ trợ hội thoại" });
+      if (req.method === "POST") {
+        const msg = parseMessage(await readBody(req, MAX_CHAT_BODY));
+        await source.postMessage(m[1], msg);
+        refreshSoon();
+      } else if (req.method !== "GET") return send(res, 405, { error: "Không hỗ trợ" });
+      return send(res, 200, { issueId: m[1], messages: await source.thread(m[1]) });
+    }
+
     if (req.method === "POST" && p === "/api/refresh") {
       await refresh();
       return send(res, 200, { ok: true });

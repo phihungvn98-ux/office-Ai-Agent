@@ -20,7 +20,7 @@
     "office": "node scripts/start.mjs --no-paperclip",
     "office:demo": "node pixel-office/server.mjs --demo",
     "backup": "bash scripts/backup.sh",
-    "test": "npm test -w office-mcp && npm test -w pixel-office"
+    "test": "npm test -w office-mcp && npm test -w pixel-office && node --test test/*.test.mjs"
   },
   "dependencies": {
     "paperclipai": "2026.1117.0"

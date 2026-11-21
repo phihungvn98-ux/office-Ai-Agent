@@ -61,6 +61,12 @@ function run(name, cmd, args) {
     child.on("exit", (code, signal) => {
       state.child = null;
       if (stopping) return;
+      if (code === 75) {
+        // Tải lại theo yêu cầu (Kỹ sư triển khai code mới) — không phải lỗi.
+        say(`${name} tải lại với code mới…`);
+        setTimeout(start, 300);
+        return;
+      }
       if (Date.now() - state.startedAt > 60000) {
         state.backoff = 2000; // chạy ổn >1 phút → reset thời gian chờ
         state.fastFails = 0;

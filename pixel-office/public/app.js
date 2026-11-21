@@ -1,4 +1,5 @@
 import { W, H, LOOKS, drawCharacter, drawRoom, sceneProps, drawEmote, layout, planPath } from "./office.js";
+import { createChat } from "./chat.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -18,6 +19,8 @@ const HEALTH = { good: ["Đúng hạn", "good"], risk: ["Có rủi ro", "risk"],
 
 let state = null;
 let selected = null;
+// Bong bóng tạm từ chat / phòng họp: agentId → { text, until }
+const spoken = new Map();
 const actors = new Map();
 
 // ---------------- canvas ----------------
@@ -74,15 +77,18 @@ function makeTag(a) {
   el.className = "tag";
   el.type = "button";
   el.innerHTML = `<span class="bubble"><span class="txt"></span></span><span class="name"></span>`;
-  el.addEventListener("click", () => selectAgent(a.id));
+  el.addEventListener("click", () => chatWith(a.id));
   overlay.appendChild(el);
   return el;
 }
 
 function updateTag(act) {
   const a = act.agent;
-  const showBubble = !["idle"].includes(a.activity) || selected === a.id;
-  const msg = a.message.length > 140 ? a.message.slice(0, 138) + "…" : a.message;
+  const said = spoken.get(a.id);
+  const saying = said && said.until > Date.now();
+  const showBubble = saying || !["idle"].includes(a.activity) || selected === a.id;
+  const text = saying ? `💬 ${said.text}` : a.message;
+  const msg = text.length > 140 ? text.slice(0, 138) + "…" : text;
   act.el.querySelector(".name").textContent = a.name;
   const b = act.el.querySelector(".bubble");
   b.firstChild.textContent = msg;
@@ -90,6 +96,7 @@ function updateTag(act) {
   act.el.dataset.activity = a.activity;
   act.el.dataset.where = act.target?.where || "";
   act.el.classList.toggle("selected", selected === a.id);
+  act.el.classList.toggle("saying", !!saying);
   act.el.setAttribute("aria-label", `${a.name}: ${ACTIVITY[a.activity]?.label || a.activity}. ${a.message}`);
 }
 
@@ -388,6 +395,13 @@ function selectAgent(id) {
   card?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
 }
 
+function chatWith(id) {
+  selected = id;
+  showTab("chat");
+  chat.open(id);
+  render();
+}
+
 // tabs
 function showTab(name) {
   for (const b of document.querySelectorAll("[role=tab]")) {
@@ -395,10 +409,24 @@ function showTab(name) {
     b.setAttribute("aria-selected", on);
     $(`#tab-${b.dataset.tab}`).hidden = !on;
   }
+  if (name === "chat") chat?.onShown();
   try {
     localStorage.setItem("pixel-office-tab", name);
   } catch {}
 }
+const chat = createChat({
+  root: $("#tab-chat"),
+  getState: () => state,
+  makeAvatar: (a, size) => avatar(a, size),
+  toast,
+  onAgentLine(agentId, text, seconds = 60) {
+    const clean = String(text || "").replace(/[*`#>]/g, "").replace(/\s+/g, " ").trim();
+    if (clean) spoken.set(agentId, { text: clean, until: Date.now() + seconds * 1000 });
+  },
+});
+// bong bóng tạm hết hạn / xuất hiện mà không cần chờ dữ liệu mới
+setInterval(() => actors.forEach(updateTag), 1000);
+
 for (const b of document.querySelectorAll("[role=tab]")) b.addEventListener("click", () => showTab(b.dataset.tab));
 try {
   showTab(localStorage.getItem("pixel-office-tab") || "agents");
@@ -421,6 +449,7 @@ function render() {
   renderProjects();
   renderActivity();
   renderSettings();
+  chat.render();
   syncActors();
 }
 

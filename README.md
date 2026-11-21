@@ -63,11 +63,15 @@ claude
 Gõ `/login`, đăng nhập bằng tài khoản Pro/Max, rồi `/exit`.
 
 ```bash
-npm run paperclip:setup
+npm start
 ```
-Lệnh này khởi tạo Paperclip (lần đầu) và mở http://localhost:3100. Từ lần sau chỉ cần `npm run paperclip`.
+Lệnh này bật **cả** Paperclip lẫn văn phòng pixel trong một cửa sổ (lần đầu Paperclip tự khởi tạo, mất 1–2 phút). Tiến trình nào tắt bất ngờ sẽ tự bật lại; nhấn Ctrl+C để tắt cả hai. Để nguyên cửa sổ này mở.
 
-Mở **terminal khác** và chạy:
+Chỉ có **một địa chỉ** cần nhớ: **http://localhost:3200**
+- `http://localhost:3200/` → **Paperclip** (trang chính: giao việc, duyệt, trả lời agent)
+- `http://localhost:3200/office/` → **văn phòng pixel** (góc dưới phải Paperclip có nút **🏢 Văn phòng**, trong văn phòng có nút **← Paperclip**)
+
+Lần đầu, mở **terminal khác** và chạy:
 
 ```bash
 npm run bootstrap
@@ -75,16 +79,13 @@ npm run bootstrap
 Lệnh này import văn phòng vào Paperclip, gán thư mục làm việc và MCP cho từng nhân viên, rồi bật họ lên.
 
 ```bash
-npm run office
-```
-Pixel Office chạy tại → http://localhost:3200
-
-```bash
 npm run doctor
 ```
 Lệnh này kiểm tra toàn bộ: Node, Claude CLI, Paperclip, 9Router và Pixel Office.
 
-Muốn xem dashboard trước khi có dữ liệu thật thì chạy `npm run office:demo`.
+Muốn xem văn phòng pixel trước khi có dữ liệu thật thì chạy `npm run office:demo` (mở http://localhost:3200/office/).
+
+> Paperclip vẫn chạy nội bộ ở cổng 3100; bạn không cần mở cổng đó. Nếu Paperclip đã chạy sẵn (ví dụ bằng systemd), `npm start` tự nhận ra và không bật thêm bản thứ hai.
 
 ### Việc cần làm ngay sau khi cài
 1. Điền **`workspaces/_office/profile.md`** (hồ sơ năng lực) và **`jobs/criteria.md`** (tiêu chí nhận job). Agent săn job dựa vào 2 file này.
@@ -148,7 +149,7 @@ Mở http://localhost:5678 → Import workflow `deploy/n8n/job-alerts-to-inbox.j
 
 ## 6. Triển khai lên VPS (chạy 24/7)
 
-VPS Ubuntu 22.04/24.04, khuyến nghị ≥ 2 vCPU / 4 GB RAM. Trỏ 2 domain con về VPS, ví dụ `paperclip.domain.com` và `office.domain.com`.
+VPS Ubuntu 22.04/24.04, khuyến nghị ≥ 2 vCPU / 4 GB RAM. Chỉ cần **1 domain con**, ví dụ `ai.domain.com`: Paperclip ở `/`, văn phòng pixel ở `/office/`.
 
 ```bash
 git clone <repo-cua-ban> ~/ai-office && cd ~/ai-office && bash deploy/setup-ubuntu.sh
@@ -203,7 +204,7 @@ ai-office/
 |---|---|
 | Pixel Office báo nhân viên "Lỗi: Chưa sẵn sàng… Authentication failed" | Claude CLI chưa đăng nhập: chạy `claude` → `/login`, rồi Pixel Office › Cài đặt › **Thử lại xác minh** |
 | `ask_model` báo "Không kết nối được 9Router" | Kiểm tra 9Router đang chạy, sửa `NINEROUTER_URL` trong `.env`, rồi chạy `npm run doctor` để xem danh sách model |
-| Pixel Office "Không kết nối được Paperclip" | Chạy `npm run paperclip`. Trên VPS thì kiểm tra `PAPERCLIP_API_KEY` |
+| Trang báo "Paperclip chưa chạy" / văn phòng báo "Không kết nối được Paperclip" | Chạy `npm start` (hoặc xem log `[paperclip]` trong cửa sổ đó). Trên VPS thì kiểm tra `PAPERCLIP_API_KEY` và `sudo journalctl -u ai-office -f` |
 | Không thấy job nào | Chỉnh `jobs/sources.json` (từ khoá), kiểm tra n8n |
 | Muốn xem agent đã làm gì | Paperclip › task › run log (có transcript đầy đủ) |
 
@@ -212,4 +213,4 @@ Chạy test: `npm test` (office-mcp và pixel-office).
 ## Bảo mật
 - `.env` (key 9Router, token) không được commit. Repo nên để **private** vì `workspaces/` chứa thông tin khách hàng.
 - Không ghi mật khẩu hay API key của khách vào `CLAUDE.md` / `STATUS.md`.
-- Trên VPS, Pixel Office được bảo vệ bằng basic auth của Caddy. Agent và n8n gửi dữ liệu bằng `PIXEL_OFFICE_TOKEN`.
+- Trên VPS: Paperclip (`/`) có màn hình đăng nhập riêng; văn phòng pixel (`/office/`) được bảo vệ bằng `PIXEL_OFFICE_USER`/`PIXEL_OFFICE_PASS`. Agent và n8n gửi dữ liệu bằng `PIXEL_OFFICE_TOKEN`.

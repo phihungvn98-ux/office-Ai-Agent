@@ -78,7 +78,7 @@ export function buildState(snap, { reports = {}, paperclipPublicUrl = "", demo =
         health: file?.health || (counts.blocked > 0 ? "risk" : "good"),
         deadline: file?.deadline || p.targetDate || null,
         statusUpdated: file?.updated || null,
-        url: paperclipPublicUrl && snap.company ? `${paperclipPublicUrl}/${snap.company.issuePrefix || ""}`.replace(/\/$/, "") : null,
+        url: paperclipPublicUrl && snap.company ? `${paperclipPublicUrl.replace(/\/+$/, "")}/${snap.company.issuePrefix || ""}` : null,
       };
     });
 

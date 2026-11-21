@@ -1,28 +1,14 @@
 # Copy thành /etc/caddy/Caddyfile, thay domain và email. Caddy tự lấy HTTPS (Let's Encrypt).
-# Tạo mật khẩu băm cho Pixel Office:  caddy hash-password
+# Chỉ cần 1 domain: cổng chung của AI Office (Pixel Office, cổng 3200) tự chia:
+#   https://ai.example.com/         → Paperclip (có màn hình đăng nhập riêng)
+#   https://ai.example.com/office/  → văn phòng pixel (bảo vệ bằng PIXEL_OFFICE_USER/PASS trong .env)
 {
 	email you@example.com
 }
 
-# Paperclip — có màn hình đăng nhập riêng (chế độ authenticated)
-paperclip.example.com {
+ai.example.com {
 	encode gzip
-	reverse_proxy 127.0.0.1:3100
-}
-
-# Pixel Office — bảo vệ bằng basic auth; riêng 2 endpoint cho agent/n8n dùng Bearer token
-office.example.com {
-	encode gzip
-	@machine path /api/agent-status /api/jobs/inbox
-	handle @machine {
-		reverse_proxy 127.0.0.1:3200
-	}
-	handle {
-		basic_auth {
-			admin $2a$14$THAY_BANG_KET_QUA_caddy_hash-password
-		}
-		reverse_proxy 127.0.0.1:3200 {
-			flush_interval -1
-		}
+	reverse_proxy 127.0.0.1:3200 {
+		flush_interval -1
 	}
 }

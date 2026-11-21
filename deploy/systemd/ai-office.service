@@ -1,0 +1,19 @@
+# /etc/systemd/system/ai-office.service — thay USER và đường dẫn repo (setup-ubuntu.sh tự làm)
+# Chạy `npm start`: Paperclip + cổng chung (Pixel Office) trong 1 dịch vụ, tự bật lại khi lỗi.
+[Unit]
+Description=AI Office (Paperclip + Pixel Office)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=USER
+WorkingDirectory=/home/USER/ai-office
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node scripts/start.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=100
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

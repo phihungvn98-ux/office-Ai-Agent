@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Pixel Office — dashboard văn phòng pixel cho AI Office.
+// Pixel Office — dashboard văn phòng pixel cho AI Office, đồng thời là "cổng" duy nhất của văn phòng:
+//   /          → chuyển tiếp sang Paperclip (trang chính, gồm cả WebSocket realtime)
+//   /office/   → văn phòng pixel + API riêng (/office/api/...)
 // Đọc dữ liệu từ Paperclip (REST + WebSocket live events), gộp trạng thái do agent tự báo (MCP office_status),
 // phát cho trình duyệt qua SSE. Không phụ thuộc thư viện ngoài.
 
@@ -12,6 +14,9 @@ import { timingSafeEqual } from "node:crypto";
 import { PaperclipClient } from "./lib/paperclip.mjs";
 import { buildState } from "./lib/state.mjs";
 import { DemoSource } from "./lib/demo.mjs";
+import { createProxy } from "./lib/proxy.mjs";
+
+const OFFICE = "/office";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
@@ -35,7 +40,9 @@ const cfg = {
   demo: env.PIXEL_OFFICE_DEMO === "1" || process.argv.includes("--demo"),
   home: env.AI_OFFICE_HOME ? path.resolve(env.AI_OFFICE_HOME) : repoRoot,
   paperclipUrl: (env.PAPERCLIP_URL || "http://localhost:3100").replace(/\/+$/, ""),
-  paperclipPublicUrl: (env.PAPERCLIP_PUBLIC_URL || env.PAPERCLIP_URL || "http://localhost:3100").replace(/\/+$/, ""),
+  // Link tới Paperclip hiển thị trong văn phòng: mặc định "/" vì Paperclip đi qua chính cổng này.
+  paperclipLink: env.PIXEL_OFFICE_PAPERCLIP_LINK || "/",
+  injectLink: env.PIXEL_OFFICE_INJECT_LINK !== "0",
   paperclipKey: env.PAPERCLIP_API_KEY || "",
   companyId: env.PAPERCLIP_COMPANY_ID || "",
   companyName: env.PAPERCLIP_COMPANY_NAME || "AI Office",
@@ -58,7 +65,20 @@ function saveReports() {
 }
 
 // ---- vòng cập nhật ----
-let state = { ok: false, error: "Đang kết nối Paperclip…", agents: [], projects: [], activity: [], updatedAt: null };
+let state = {
+  ok: false,
+  error: "Đang kết nối Paperclip…",
+  updatedAt: null,
+  company: null,
+  paperclipUrl: cfg.demo ? null : cfg.paperclipLink,
+  totals: { tasks: null, costs: null, pendingApprovals: 0 },
+  approvals: [],
+  meeting: { active: false },
+  agents: [],
+  projects: [],
+  routines: [],
+  activity: [],
+};
 const clients = new Set();
 let refreshing = null;
 let pending = false;
@@ -71,7 +91,7 @@ async function refresh() {
   refreshing = (async () => {
     try {
       const snap = await source.snapshot();
-      state = buildState(snap, { reports: { ...(snap.reports || {}), ...reports }, home: cfg.home, paperclipPublicUrl: cfg.paperclipPublicUrl, demo: cfg.demo });
+      state = buildState(snap, { reports: { ...(snap.reports || {}), ...reports }, home: cfg.home, paperclipPublicUrl: cfg.paperclipLink, demo: cfg.demo });
     } catch (err) {
       state = { ...state, ok: false, error: err.message, updatedAt: new Date().toISOString() };
     }
@@ -139,9 +159,22 @@ function send(res, code, data) {
   res.end(JSON.stringify(data));
 }
 
+// Demo không có Paperclip → không chuyển tiếp, "/" đưa thẳng vào văn phòng.
+const proxy = cfg.demo ? null : createProxy({ target: cfg.paperclipUrl, injectLink: cfg.injectLink });
+
+function redirect(res, location) {
+  res.writeHead(302, { location, "cache-control": "no-store" });
+  res.end();
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
-  const p = url.pathname;
+  if (url.pathname === OFFICE) return redirect(res, `${OFFICE}/${url.search}`);
+  if (!url.pathname.startsWith(`${OFFICE}/`)) {
+    if (proxy) return proxy.handle(req, res);
+    return redirect(res, `${OFFICE}/`);
+  }
+  const p = url.pathname.slice(OFFICE.length); // luôn bắt đầu bằng "/"
 
   try {
     // Agent báo trạng thái: xác thực bằng token (không cần basic auth).
@@ -248,8 +281,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// WebSocket (realtime của Paperclip UI) cũng đi qua cổng.
+server.on("upgrade", (req, socket, head) => {
+  if (!proxy || req.url.startsWith(`${OFFICE}/`)) return socket.destroy();
+  proxy.upgrade(req, socket, head);
+});
+
 server.listen(cfg.port, cfg.host, () => {
-  console.log(`Pixel Office: http://${cfg.host}:${cfg.port}  (${cfg.demo ? "DEMO" : `Paperclip ${cfg.paperclipUrl}`})`);
+  const base = `http://${cfg.host === "0.0.0.0" ? "localhost" : cfg.host}:${cfg.port}`;
+  console.log(
+    cfg.demo
+      ? `Pixel Office (DEMO): ${base}${OFFICE}/`
+      : `AI Office: ${base}/  →  Paperclip (${cfg.paperclipUrl})  ·  văn phòng pixel: ${base}${OFFICE}/`,
+  );
   refresh();
 });
 

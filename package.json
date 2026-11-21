@@ -9,6 +9,7 @@
     "pixel-office"
   ],
   "scripts": {
+    "start": "node scripts/start.mjs",
     "paperclip:setup": "paperclipai onboard --yes",
     "paperclip": "paperclipai run",
     "bootstrap": "node scripts/office.mjs bootstrap",
@@ -16,7 +17,7 @@
     "new-project": "node scripts/office.mjs new-project",
     "status": "node scripts/office.mjs status",
     "doctor": "node scripts/office.mjs doctor",
-    "office": "node pixel-office/server.mjs",
+    "office": "node scripts/start.mjs --no-paperclip",
     "office:demo": "node pixel-office/server.mjs --demo",
     "backup": "bash scripts/backup.sh",
     "test": "npm test -w office-mcp && npm test -w pixel-office"

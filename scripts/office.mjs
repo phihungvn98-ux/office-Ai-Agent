@@ -208,8 +208,9 @@ async function bootstrap(opts) {
   }
 
   console.log(`\n${c.b("Xong.")} Tiếp theo:`);
-  console.log(`  • Mở Paperclip:     ${PAPERCLIP}`);
-  console.log(`  • Mở Pixel Office:  ${c.b("npm run office")}  →  ${PIXEL}`);
+  console.log(`  • Chạy văn phòng:   ${c.b("npm start")}  (nếu chưa chạy)`);
+  console.log(`  • Mở Paperclip:     ${PIXEL}/`);
+  console.log(`  • Mở văn phòng pixel: ${PIXEL}/office/`);
   console.log(`  • Điền hồ sơ năng lực: workspaces/_office/profile.md và jobs/criteria.md`);
   console.log(`  • Thêm dự án khách: ${c.b('node scripts/office.mjs new-project shop-abc --name "Website Shop ABC"')}\n`);
 }
@@ -383,10 +384,10 @@ async function doctor() {
   }
 
   try {
-    const r = await fetch(`${PIXEL}/api/state`, { signal: AbortSignal.timeout(3000) });
-    r.ok ? ok(`Pixel Office ${PIXEL}`) : warn(`Pixel Office trả ${r.status}`);
+    const r = await fetch(`${PIXEL}/office/api/state`, { signal: AbortSignal.timeout(3000) });
+    r.ok ? ok(`Cổng chung ${PIXEL}/ (Paperclip) · ${PIXEL}/office/ (văn phòng)`) : warn(`Pixel Office trả ${r.status}`);
   } catch {
-    warn(`Pixel Office chưa chạy (npm run office)`);
+    warn(`Cổng chung ${PIXEL} chưa chạy (npm start)`);
   }
   fs.existsSync(MCP_CONFIG) ? ok("MCP config đã tạo") : warn("Chưa có office-mcp/mcp.generated.json — chạy bootstrap");
   fs.existsSync(path.join(WS, "_office", "jobs", "sources.json")) ? ok("Nguồn job: jobs/sources.json") : warn("Chưa có workspaces/_office/jobs/sources.json");

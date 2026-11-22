@@ -110,7 +110,7 @@ before(async () => {
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
   child = spawn(process.execPath, [path.join(here, "..", "server.mjs")], {
-    env: { ...process.env, PIXEL_OFFICE_PORT: String(port), PAPERCLIP_URL: `http://127.0.0.1:${upPort}`, AI_OFFICE_HOME: home, PIXEL_OFFICE_POLL_MS: "60000" },
+    env: { ...process.env, PAPERCLIP_COMPANY_ID: "", PAPERCLIP_COMPANY_NAME: "AI Office", PAPERCLIP_API_KEY: "", PIXEL_OFFICE_PORT: String(port), PAPERCLIP_URL: `http://127.0.0.1:${upPort}`, AI_OFFICE_HOME: home, PIXEL_OFFICE_POLL_MS: "60000" },
     stdio: "ignore",
   });
   for (let i = 0; i < 50; i++) {

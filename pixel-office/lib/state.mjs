@@ -118,7 +118,13 @@ export function buildState(snap, { reports = {}, paperclipPublicUrl = "", demo =
       else if (running && issue) message = `Đang làm: ${issue.title}`;
       else if (setupError)
         message = /authenticat|sign in|login/i.test(setupError)
-          ? "Chưa đăng nhập Claude Code — chạy `claude` → /login rồi bấm Thử lại xác minh"
+          ? a.adapterType === "gemini_local"
+            ? "Chưa đăng nhập Gemini CLI — chạy `gemini` → Login with Google rồi bấm Thử lại xác minh"
+            : "Chưa đăng nhập Claude Code — chạy `claude` → /login rồi bấm Thử lại xác minh"
+          : /command was not found|not found|ENOENT/i.test(setupError)
+          ? a.adapterType === "gemini_local"
+            ? "Chưa cài Gemini CLI — chạy: npm install -g @google/gemini-cli, rồi bấm Thử lại xác minh"
+            : "Chưa cài Claude Code CLI trên máy — cài rồi bấm Thử lại xác minh"
           : `Chưa sẵn sàng: ${setupError.split(". ").slice(0, 2).join(". ")}`;
       else if (activity === "paused") message = a.pauseReason ? `Tạm dừng: ${a.pauseReason}` : "Đang tạm dừng";
       else if (activity === "error") message = a.errorReason || "Gặp lỗi ở lượt chạy gần nhất";

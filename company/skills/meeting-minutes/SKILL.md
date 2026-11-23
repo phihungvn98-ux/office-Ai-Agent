@@ -25,7 +25,7 @@ Mỗi lần được đánh thức trên task họp, xác định **bước** d�
    - `GET /api/companies/{companyId}/issues?status=in_progress,blocked,in_review`
    - `STATUS.md` của từng dự án; weekly thêm `costs/summary` và `workspaces/_office/jobs/reports/` tuần này.
 3. Comment **chương trình họp** lên task họp (≤ 10 dòng): mục tiêu buổi họp, 2–4 điểm cần bàn (deadline gần, việc bị chặn, proposal chờ duyệt, góp ý cho Kỹ sư), mời từng người.
-4. Mời phát biểu — với **mỗi nhân viên đang hoạt động** (bỏ qua người `paused`/lỗi; luôn mời `pm`, `job-hunter`, `engineer` nếu đang hoạt động), tạo task con:
+4. Mời phát biểu — với **mỗi nhân viên đang hoạt động** (bỏ qua người `paused`/lỗi; luôn mời `pm`, `job-hunter`, `engineer`, `assistant` nếu đang hoạt động), tạo task con:
    ```json
    POST /api/companies/{companyId}/issues
    {
@@ -35,7 +35,7 @@ Mỗi lần được đánh thức trên task họp, xác định **bước** d�
      "projectId": "<dự án của task họp>",
      "status": "todo",
      "priority": "high",
-     "description": "Phát biểu ngắn tại buổi họp <tên> (task cha <IDENTIFIER>).\n\n1. Đọc chương trình họp và các phát biểu trước trên task cha.\n2. Comment LÊN TASK CHA (không phải task này), tối đa 8 dòng, theo mẫu:\n   **<Tên bạn>** — Đã xong: … · Đang làm: … · Vướng/cần chủ văn phòng: … · Đề xuất: …\n   (Kỹ sư: đã sửa gì, nhánh chờ duyệt, góp ý nhận được, đề xuất cải tiến.)\n3. Đánh dấu task này `done`. Không làm việc khác trong lượt này."
+     "description": "Phát biểu ngắn tại buổi họp <tên> (task cha <IDENTIFIER>).\n\n1. Đọc chương trình họp và các phát biểu trước trên task cha.\n2. Comment LÊN TASK CHA (không phải task này), tối đa 8 dòng, theo mẫu:\n   **<Tên bạn>** — Đã xong: … · Đang làm: … · Vướng/cần chủ văn phòng: … · Đề xuất: …\n   (Kỹ sư: đã sửa gì, nhánh chờ duyệt, góp ý nhận được, đề xuất cải tiến. Trợ lý: email quan trọng từ lần họp trước, việc đã chuyển ai.)\n3. Đánh dấu task này `done`. Không làm việc khác trong lượt này."
    }
    ```
 5. Đặt task họp `blocked` với `blockedByIssueIds` = các task con vừa tạo (Paperclip sẽ đánh thức bạn khi chúng xong), comment "Đang chờ mọi người phát biểu", rồi **kết thúc lượt**.

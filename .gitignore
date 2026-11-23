@@ -12,3 +12,7 @@ data/
 
 # Paperclip/Claude tự sinh trong workspace (đường dẫn riêng của máy)
 **/.claude/settings.local.json
+
+# Cấu hình MCP sinh tự động cho Gemini CLI (đường dẫn riêng của máy) + trạng thái email
+workspaces/_office/.gemini/settings.json
+workspaces/_office/email/

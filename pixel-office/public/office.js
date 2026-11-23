@@ -33,6 +33,7 @@ export const LOOKS = {
   dev: { hair: "#1b1b1b", shirt: "#6c757d", shirtB: "#5a6268", accent: "#adb5bd", pants: "#2b2b35", hairStyle: "messy" },
   qa: { hair: "#3b2a1a", shirt: "#7b5ea7", shirtB: "#684d90", accent: "#fff", pants: "#2b2b35", hairStyle: "long" },
   staff: { hair: "#2e2e2e", shirt: "#3a86ff", shirtB: "#2f6fd6", accent: "#fff", pants: "#2b2b35", hairStyle: "short" },
+  assistant: { hair: "#2b1d14", shirt: "#14b8a6", shirtB: "#0f9488", accent: "#fff", pants: "#30304a", hairStyle: "long", glasses: true },
 };
 
 // ---------- tiện ích vẽ ----------
@@ -140,7 +141,8 @@ export function drawCharacter(ctx, x, y, look, o = {}) {
 export function layout(n) {
   const cols = 4;
   const desks = [];
-  const rowsY = [62, 168];
+  // ≤ 8 người: 2 hàng bàn; 9–12 người: 3 hàng (hàng giữa nằm dưới lối đi).
+  const rowsY = n > 8 ? [62, 150, 202] : [62, 168];
   const colX = [36, 92, 148, 204];
   for (let i = 0; i < Math.max(n, 8); i++) {
     const r = Math.floor(i / cols);

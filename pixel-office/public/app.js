@@ -241,7 +241,7 @@ function renderAgents() {
         ${a.issue ? `<span title="${esc(a.issue.title)}">📌 ${esc(a.issue.identifier || "")} ${esc(a.issue.title)}</span>` : ""}
         ${a.project ? `<span>📁 ${esc(a.project)}</span>` : ""}
         <span>✅ ${a.doneTasks} xong · ${a.openTasks} mở</span>
-        <span>🧠 ${esc(a.model || "—")}</span>
+        <span>🧠 ${a.adapterType === "gemini_local" ? "Gemini · " : ""}${esc(a.model || "—")}</span>
         <span>⏱ ${ago(a.lastHeartbeatAt)}</span>
       </div>`;
     card.querySelector(".av").appendChild(avatar(a));
@@ -284,6 +284,8 @@ function renderActivity() {
 }
 
 const MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"];
+const GEMINI_MODELS = ["auto", "gemini-3.1-pro-preview", "gemini-3.5-flash", "gemini-2.5-pro", "gemini-2.5-flash"];
+const modelsFor = (a) => (a.adapterType === "gemini_local" ? GEMINI_MODELS : MODELS);
 const INTERVALS = [[1800, "30 phút"], [3600, "1 giờ"], [7200, "2 giờ"], [14400, "4 giờ"], [28800, "8 giờ"]];
 
 function renderSettings() {
@@ -302,7 +304,7 @@ function renderSettings() {
             : `<button class="btn ghost" data-act="pause">⏸ Tạm dừng</button>`}
           <button class="btn ghost" data-act="wake" ${a.status === "paused" || a.setupError ? "disabled" : ""}>⚡ Đánh thức</button>
           <label class="sel">Model
-            <select data-set="model">${[...new Set([a.model, ...MODELS].filter(Boolean))].map((m) => `<option ${m === a.model ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
+            <select data-set="model">${[...new Set([a.model, ...modelsFor(a)].filter(Boolean))].map((m) => `<option ${m === a.model ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>
           </label>
           <label class="sel">Tự thức dậy
             <select data-set="heartbeat">

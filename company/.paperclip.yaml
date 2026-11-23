@@ -218,6 +218,24 @@ agents:
           kind: plain
           requirement: optional
           default: "gpt-6"
+  assistant:
+    metadata:
+      officeSlug: assistant
+      sprite: assistant
+    adapter:
+      type: gemini_local
+      config:
+        engine: cli
+        model: auto
+        timeoutSec: 1800
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
+    runtime:
+      heartbeat:
+        enabled: false
+        wakeOnAssignment: true
+        wakeOnDemand: true
+        maxConcurrentRuns: 1
 projects:
   office-ops:
     color: "#7c5cff"
@@ -252,6 +270,14 @@ routines:
       - kind: schedule
         label: "7:20, 13:20, 19:20"
         cronExpression: "20 7,13,19 * * *"
+        timezone: Asia/Ho_Chi_Minh
+  email-check:
+    concurrencyPolicy: skip_if_active
+    catchUpPolicy: skip_missed
+    triggers:
+      - kind: schedule
+        label: "7:10, 12:10, 17:10"
+        cronExpression: "10 7,12,17 * * *"
         timezone: Asia/Ho_Chi_Minh
   client-projects-review:
     concurrencyPolicy: skip_if_active

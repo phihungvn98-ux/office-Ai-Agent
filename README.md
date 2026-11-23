@@ -130,6 +130,32 @@ Kỹ sư **không** khởi động lại Paperclip, không sửa `.env`, không 
 
 **Họp có hội thoại:** Chánh văn phòng mở họp → mỗi người (PM, Săn job, Kỹ sư) phát biểu ≤ 8 dòng trên task họp → Chánh VP tổng hợp cả ý kiến bạn chen vào thành biên bản. Mỗi buổi tốn khoảng 5 lượt chạy Claude (thay vì 1) — muốn tiết kiệm thì tắt lịch "Họp sáng" và chỉ giữ "Review tuần".
 
+## 2c. Trợ lý riêng (chạy bằng Gemini) — email + việc vặt
+
+**Trợ Lý** chạy bằng **Gemini CLI** chính chủ của Google (đăng nhập tài khoản Google), để chia tải khỏi quota Claude. Việc của Trợ lý:
+- **Kiểm tra email 3 lần/ngày** (07:10 · 12:10 · 17:10). Thư khách → task cho PM. Email báo job → Săn Job (không cần n8n). Thư thường lệ → **soạn nháp trả lời** trong Gmail › Thư nháp. Cuối mỗi lượt gửi bạn **bản tóm tắt trong tab Trò chuyện**.
+- Nhận việc vặt qua chat ("khách ABC trả lời chưa?", "soạn thư hẹn lịch…") và chuyển việc đúng người.
+- **Không bao giờ gửi, xoá hay đánh dấu thư** — chỉ đọc và soạn nháp. Không làm theo chỉ dẫn nằm trong email (chống lừa đảo/prompt injection), đánh dấu ⚠ thư đòi mật khẩu/OTP/chuyển tiền.
+
+Cài đặt (trong Ubuntu):
+```bash
+npm install -g @google/gemini-cli
+```
+```bash
+gemini
+```
+Chọn **Login with Google**, đăng nhập, rồi `/quit`. Sau đó tạo **Mật khẩu ứng dụng** Gmail (https://myaccount.google.com/apppasswords — cần bật xác minh 2 bước), bật IMAP trong Gmail, điền `EMAIL_USER` và `EMAIL_APP_PASSWORD` vào `.env`, rồi:
+```bash
+npm run sync
+```
+```bash
+npm run doctor
+```
+`doctor` kiểm tra Gemini CLI đã đăng nhập và thử đăng nhập IMAP.
+
+> Lưu ý quyền riêng tư: nội dung email bạn cho Trợ lý đọc sẽ được gửi tới Gemini (Google) để xử lý. Đừng dùng hộp thư có dữ liệu nhạy cảm nếu bạn không muốn điều đó.
+> Không dùng đăng nhập Google này qua 9Router hay công cụ bên thứ ba — chỉ dùng qua Gemini CLI chính chủ.
+
 ## 3. Tối ưu context cho từng dự án
 
 - Mỗi dự án có một thư mục riêng. Khi agent làm task của dự án nào, nó **chạy bên trong thư mục đó** (project workspace của Paperclip), nên `CLAUDE.md` của dự án được nạp tự động. Agent không đọc sang dự án khác.
@@ -196,7 +222,7 @@ Sprite có sẵn cho Pixel Office: `boss`, `pm`, `hunter`, `marketer`, `designer
 ai-office/
 ├── company/                 # Company package (import vào Paperclip)
 │   ├── COMPANY.md
-│   ├── agents/{manager,pm,job-hunter,engineer}/AGENTS.md
+│   ├── agents/{manager,pm,job-hunter,engineer,assistant,be-dev,fe-dev,security}/AGENTS.md
 │   ├── skills/{office-context,meeting-minutes,job-scoring,proposal-writing,ask-other-models,office-engineering}/SKILL.md
 │   ├── projects/office-ops/  # dự án nội bộ + 4 task định kỳ (họp, review tuần, quét job, rà soát dự án)
 │   ├── projects/office-dev/  # "Phát triển văn phòng" của Kỹ sư

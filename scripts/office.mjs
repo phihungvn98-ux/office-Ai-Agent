@@ -109,6 +109,59 @@ function writeMcpConfig() {
   return MCP_CONFIG;
 }
 
+// MCP "office" cho nhân viên chạy Gemini CLI (settings của workspace, giữ nguyên các khoá khác nếu có).
+function writeGeminiSettings(cwd, withEmail) {
+  const file = path.join(cwd, ".gemini", "settings.json");
+  let settings = {};
+  try {
+    settings = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {}
+  settings.mcpServers = {
+    ...(settings.mcpServers || {}),
+    office: {
+      command: process.execPath,
+      args: [MCP_SERVER],
+      env: { AI_OFFICE_HOME: ROOT, PIXEL_OFFICE_URL: PIXEL, ...(withEmail ? { OFFICE_EMAIL_TOOLS: "1" } : {}) },
+      trust: true,
+      timeout: 120000,
+    },
+  };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(settings, null, 2) + "\n");
+  return file;
+}
+
+// Lịch định kỳ cần cho nhân viên đã có (sync chỉ tuyển người, không tạo lịch). Thiếu thì tạo.
+const REQUIRED_ROUTINES = [
+  {
+    slug: "assistant",
+    title: "Kiểm tra email",
+    description:
+      "Kiểm tra email theo skill `assistant-desk` (mục \"Lượt Kiểm tra email\"): đọc thư mới, phân loại, chuyển việc cho PM/Săn Job, soạn nháp trả lời, gửi bản tóm tắt cho chủ văn phòng trong chat. Không bao giờ gửi email — chỉ soạn nháp.",
+    project: "Vận hành văn phòng",
+    trigger: { kind: "schedule", label: "7:10, 12:10, 17:10", cronExpression: "10 7,12,17 * * *", timezone: "Asia/Ho_Chi_Minh" },
+  },
+];
+
+async function ensureRoutines(company) {
+  const [agents, projects, routines] = await Promise.all([
+    api(`/companies/${company.id}/agents`),
+    api(`/companies/${company.id}/projects`),
+    api(`/companies/${company.id}/routines`),
+  ]);
+  for (const r of REQUIRED_ROUTINES) {
+    const agent = agents.find((a) => slugOf(a) === r.slug && a.status !== "terminated");
+    const project = projects.find((p) => p.name === r.project);
+    if (!agent || !project || routines.some((x) => x.title === r.title)) continue;
+    const created = await api(`/companies/${company.id}/routines`, {
+      method: "POST",
+      body: JSON.stringify({ title: r.title, description: r.description, assigneeAgentId: agent.id, projectId: project.id, concurrencyPolicy: "skip_if_active", catchUpPolicy: "skip_missed" }),
+    });
+    await api(`/routines/${created.id}/triggers`, { method: "POST", body: JSON.stringify(r.trigger) });
+    ok(`Tạo lịch "${r.title}" (${r.trigger.label}) cho ${agent.name}`);
+  }
+}
+
 async function ensureProjectWorkspace(project, cwd, name) {
   const full = await api(`/projects/${project.id}`);
   const list = full.workspaces || [];
@@ -165,8 +218,23 @@ async function bootstrap(opts) {
   const officeCwd = path.join(WS, "_office");
   const agents = await api(`/companies/${company.id}/agents`);
   for (const a of agents.filter((x) => x.status !== "terminated")) {
+    if (a.adapterType === "gemini_local") {
+      // Gemini CLI không có --mcp-config: MCP "office" khai báo trong workspaces/_office/.gemini/settings.json,
+      // và thư mục phải được tin cậy thì Gemini CLI mới đọc settings của workspace.
+      const cfg = { ...(a.adapterConfig || {}) };
+      cfg.cwd = officeCwd;
+      cfg.engine = "cli";
+      // Paperclip che giá trị env khi đọc ra (***REDACTED***). Đã có biến trust thì không gửi lại env
+      // (PATCH không kèm env vẫn giữ nguyên env cũ); chưa có thì thêm.
+      if (cfg.env && "GEMINI_CLI_TRUST_WORKSPACE" in cfg.env) delete cfg.env;
+      else cfg.env = { ...(cfg.env || {}), GEMINI_CLI_TRUST_WORKSPACE: "true" };
+      await api(`/agents/${a.id}`, { method: "PATCH", body: JSON.stringify({ adapterConfig: cfg }) });
+      const gem = writeGeminiSettings(officeCwd, slugOf(a) === "assistant");
+      ok(`${a.name} (${slugOf(a)}, Gemini): cwd=workspaces/_office, MCP office qua ${path.relative(ROOT, gem)}`);
+      continue;
+    }
     if (a.adapterType !== "claude_local") {
-      warn(`${a.name}: adapter ${a.adapterType} — bỏ qua (chỉ cấu hình tự động cho claude_local)`);
+      warn(`${a.name}: adapter ${a.adapterType} — bỏ qua (chỉ cấu hình tự động cho claude_local và gemini_local)`);
       continue;
     }
     const cfg = { ...(a.adapterConfig || {}) };
@@ -181,6 +249,8 @@ async function bootstrap(opts) {
     await api(`/agents/${a.id}`, { method: "PATCH", body: JSON.stringify({ adapterConfig: cfg }) });
     ok(`${a.name} (${slugOf(a)}): cwd=${isEngineer ? "<gốc repo>" : "workspaces/_office"}, MCP office`);
   }
+
+  await ensureRoutines(company);
 
   // 3. dự án nội bộ + dự án khách hàng
   const projects = await api(`/companies/${company.id}/projects`);
@@ -424,6 +494,24 @@ async function doctor() {
     warn(`Cổng chung ${PIXEL} chưa chạy (npm start)`);
   }
   fs.existsSync(MCP_CONFIG) ? ok("MCP config đã tạo") : warn("Chưa có office-mcp/mcp.generated.json — chạy bootstrap");
+
+  // Trợ lý chạy bằng Gemini + email
+  const gemini = spawnSync(process.platform === "win32" ? "gemini.cmd" : "gemini", ["--version"], { encoding: "utf8", shell: process.platform === "win32" });
+  if (gemini.status === 0) {
+    const home = process.env.GEMINI_CLI_HOME || path.join(process.env.HOME || process.env.USERPROFILE || "", ".gemini");
+    const loggedIn = fs.existsSync(path.join(home, "oauth_creds.json")) || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    loggedIn ? ok(`Gemini CLI ${gemini.stdout.trim()} (đã đăng nhập)`) : warn(`Gemini CLI ${gemini.stdout.trim()} chưa đăng nhập — chạy \`gemini\` và chọn "Login with Google"`);
+  } else warn("Chưa cài Gemini CLI (cho Trợ lý): npm install -g @google/gemini-cli, rồi chạy `gemini` để đăng nhập Google");
+  fs.existsSync(path.join(WS, "_office", ".gemini", "settings.json")) ? ok("MCP office cho Gemini: workspaces/_office/.gemini/settings.json") : warn("Chưa có cấu hình MCP cho Gemini — chạy npm run sync");
+  if (process.env.EMAIL_USER && process.env.EMAIL_APP_PASSWORD) {
+    try {
+      const { checkLogin } = await import(path.join(ROOT, "office-mcp", "lib", "email.mjs"));
+      const r = await checkLogin();
+      ok(`Email ${process.env.EMAIL_USER}: đăng nhập IMAP được (${r.inbox} thư trong INBOX, thư mục Nháp: ${r.drafts})`);
+    } catch (err) {
+      bad(`Email ${process.env.EMAIL_USER}: ${err.message}`);
+    }
+  } else warn("Chưa cấu hình email cho Trợ lý (EMAIL_USER, EMAIL_APP_PASSWORD trong .env)");
   fs.existsSync(path.join(WS, "_office", "jobs", "sources.json")) ? ok("Nguồn job: jobs/sources.json") : warn("Chưa có workspaces/_office/jobs/sources.json");
   console.log();
 }

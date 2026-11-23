@@ -33,6 +33,11 @@ export const config = {
   pixelOfficeUrl: (env.PIXEL_OFFICE_URL || "http://localhost:3200").replace(/\/+$/, ""),
   pixelOfficeToken: env.PIXEL_OFFICE_TOKEN || "",
   freelancerApiBase: (env.FREELANCER_API_BASE || "https://www.freelancer.com/api").replace(/\/+$/, ""),
+  emailHost: env.EMAIL_IMAP_HOST || "imap.gmail.com",
+  emailPort: Number(env.EMAIL_IMAP_PORT || 993),
+  emailUser: env.EMAIL_USER || "",
+  emailPass: (env.EMAIL_APP_PASSWORD || "").replace(/\s+/g, ""),
+  emailTools: env.OFFICE_EMAIL_TOOLS === "1",
   agentId: env.PAPERCLIP_AGENT_ID || env.OFFICE_AGENT || "",
   runId: env.PAPERCLIP_RUN_ID || "",
 };

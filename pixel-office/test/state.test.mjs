@@ -115,7 +115,7 @@ test("project progress uses task ratio when STATUS.md is absent", () => {
 test("demo source produces a consistent snapshot", async () => {
   const snap = await new DemoSource().snapshot();
   const s = buildState(snap, { reports: snap.reports });
-  assert.equal(s.agents.length, 6);
+  assert.equal(s.agents.length, 7);
   assert.ok(s.projects.length >= 3);
 });
 

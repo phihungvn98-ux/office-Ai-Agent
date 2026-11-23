@@ -77,6 +77,7 @@ export class DemoSource {
       { s: "pm", name: "Quản Lý Dự Án", title: "Project Manager — dự án khách hàng", role: "pm", sprite: "pm", reportsTo: "manager", model: "claude-sonnet-5-5" },
       { s: "job-hunter", name: "Săn Job", title: "Freelance Job Hunter", role: "researcher", sprite: "hunter", reportsTo: "manager", model: "claude-haiku-5-5" },
       { s: "marketing", name: "Marketing", title: "Content & Social (sắp tuyển)", role: "cmo", sprite: "marketer", reportsTo: "manager", model: "claude-sonnet-5-5" },
+      { s: "assistant", name: "Trợ Lý", title: "Trợ lý riêng (Gemini)", role: "general", sprite: "assistant", reportsTo: "manager", model: "auto", adapterType: "gemini_local" },
       { s: "engineer", name: "Kỹ Sư Văn Phòng", title: "Kỹ sư phát triển văn phòng", role: "engineer", sprite: "dev", reportsTo: "manager", model: "claude-sonnet-5-5" },
       { s: "seo", name: "SEO", title: "SEO Specialist (sắp tuyển)", role: "general", sprite: "designer", reportsTo: "manager", model: "claude-haiku-5-5" },
     ];
@@ -88,6 +89,7 @@ export class DemoSource {
       if (s === "job-hunter") return t > 25 && t < 75;
       if (s === "marketing") return t > 40;
       if (s === "engineer") return t > 20 && t < 80;
+      if (s === "assistant") return t > 30 && t < 55;
       return false;
     };
 
@@ -101,7 +103,7 @@ export class DemoSource {
       pauseReason: this.paused.has(d.s) ? "Chưa kích hoạt" : null,
       metadata: { officeSlug: d.s, sprite: d.sprite },
       reportsTo: d.reportsTo ? id(d.reportsTo) : null,
-      adapterType: "claude_local",
+      adapterType: d.adapterType || "claude_local",
       adapterConfig: { model: d.model },
       runtimeConfig: { heartbeat: { enabled: false, intervalSec: 3600 } },
       lastHeartbeatAt: now,
@@ -166,6 +168,7 @@ export class DemoSource {
         [id("manager")]: { state: "meeting", message: "Chủ trì họp sáng: 3 dự án, 1 task bị chặn", progress: Math.round((t / 18) * 100), at: now },
         [id("pm")]: { state: "working", message: "Cập nhật STATUS.md của Shop ABC", progress: Math.round((t / 60) * 100), at: now },
         [id("job-hunter")]: { state: t < 50 ? "researching" : "writing", message: t < 50 ? "Đang chấm 24 job mới (GPT-6 lọc thô)" : "Viết proposal nháp cho 3 job ≥ 75 điểm", progress: Math.round(((t - 25) / 50) * 100), at: now },
+        [id("assistant")]: { state: "working", message: "Tóm tắt 6 email mới — 2 việc cần anh quyết, 3 job chuyển cho Săn Job", progress: Math.round(((t - 30) / 25) * 100), at: now },
         [id("engineer")]: { state: "working", message: "Viết code nguồn job PeoplePerHour trên nhánh eng/AIO-9", progress: Math.round(((t - 20) / 60) * 100), at: now },
         [id("marketing")]: { state: "writing", message: "Soạn lịch nội dung tháng 12", progress: Math.round(((t - 40) / 50) * 100), at: now },
       },
